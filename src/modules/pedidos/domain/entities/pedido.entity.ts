@@ -24,6 +24,9 @@ export class Pedido extends BaseEntity {
   }
 
   get total(): number {
-    return this.items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0);
+    return this.items.reduce(
+      (acc, item) => acc + item.cantidad * item.precioUnitario,
+      0,
+    );
   }
 }

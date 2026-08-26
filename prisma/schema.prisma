@@ -1,13 +1,143 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Esquema de datos de Parchemos.
+// Alcance actual: GU-01 (Registro) y GU-02 (Inicio y cierre de sesion).
+// Las reglas que Prisma no modela (CHECKs, triggers, RLS) viven en
+// prisma/migrations/20260825000000_init_auth_gu01_gu02/migration.sql
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  // NestJS compila a CommonJS: sin esto el cliente generado usa import.meta.url
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+/// Roles de la plataforma. GU-01 solo permite auto-registro de COMENSAL y
+/// RESTAURANTE; los demas se crean desde GU-05 / GU-06.
+enum UserRole {
+  comensal
+  restaurante
+  personal_restaurante
+  repartidor
+  administrador
+
+  @@map("user_role")
+}
+
+/// Estado de la cuenta:
+/// - pendiente_aprobacion: restaurante recien registrado (GU-01 Esc. 2)
+/// - activa: puede iniciar sesion (GU-02 Esc. 1)
+/// - suspendida: bloqueada por un administrador, con motivo (GU-02 Esc. 3)
+/// - deshabilitada: acceso revocado
+enum AccountStatus {
+  pendiente_aprobacion
+  activa
+  suspendida
+  deshabilitada
+
+  @@map("account_status")
+}
+
+/// Motivo por el que un refresh token deja de ser valido (GU-02 Esc. 5 y 6).
+enum SessionRevokeReason {
+  logout
+  logout_all
+  rotacion
+  expiracion
+  cambio_password
+  cuenta_suspendida
+  revocada_por_admin
+
+  @@map("session_revoke_reason")
+}
+
+/// Cuenta de acceso a la plataforma (GU-01).
+model User {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Correo unico en toda la plataforma, case-insensitive (GU-01 Esc. 3).
+  email               String        @unique @db.Citext
+  /// Hash Argon2id/bcrypt. Nunca la contrasena en texto plano.
+  passwordHash        String        @map("password_hash")
+  passwordUpdatedAt   DateTime      @default(now()) @map("password_updated_at") @db.Timestamptz(6)
+
+  fullName            String        @map("full_name")
+  phone               String?
+
+  role                UserRole
+  status              AccountStatus @default(activa)
+  /// Obligatorio cuando status = suspendida (GU-02 Esc. 3).
+  suspensionReason    String?       @map("suspension_reason")
+  statusChangedAt     DateTime      @default(now()) @map("status_changed_at") @db.Timestamptz(6)
+
+  /// Aceptacion de terminos y politica de datos (GU-01 Esc. 6).
+  termsAcceptedAt     DateTime      @map("terms_accepted_at") @db.Timestamptz(6)
+  termsVersion        String        @default("1.0") @map("terms_version")
+  privacyAcceptedAt   DateTime      @map("privacy_accepted_at") @db.Timestamptz(6)
+
+  /// Bloqueo temporal por intentos fallidos (GU-02 Esc. 4).
+  failedLoginAttempts Int           @default(0) @map("failed_login_attempts") @db.SmallInt
+  lockedUntil         DateTime?     @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt         DateTime?     @map("last_login_at") @db.Timestamptz(6)
+
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  sessions            Session[]
+  loginAttempts       LoginAttempt[]
+
+  @@index([status])
+  @@index([role])
+  @@map("users")
+}
+
+/// Refresh tokens vigentes. El logout marca revokedAt (GU-02 Esc. 5 y 6).
+model Session {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String               @map("user_id") @db.Uuid
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 del refresh token. El valor en claro solo lo conoce el cliente.
+  refreshTokenHash String               @unique @map("refresh_token_hash")
+
+  issuedAt         DateTime             @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt        DateTime             @map("expires_at") @db.Timestamptz(6)
+  lastUsedAt       DateTime?            @map("last_used_at") @db.Timestamptz(6)
+
+  revokedAt        DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  revokedReason    SessionRevokeReason? @map("revoked_reason")
+
+  ipAddress        String?              @map("ip_address") @db.Inet
+  userAgent        String?              @map("user_agent")
+
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Bitacora de intentos de inicio de sesion, base del bloqueo temporal
+/// y de la auditoria de accesos (GU-02 Esc. 2 y 4).
+model LoginAttempt {
+  id              BigInt   @id @default(autoincrement())
+
+  /// Se guarda aunque el correo no exista, para limitar por identificador
+  /// sin revelar si esta registrado.
+  emailAttempted  String   @map("email_attempted") @db.Citext
+  userId          String?  @map("user_id") @db.Uuid
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  successful      Boolean
+  failureReason   String?  @map("failure_reason")
+
+  ipAddress       String?  @map("ip_address") @db.Inet
+  userAgent       String?  @map("user_agent")
+
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([emailAttempted, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([ipAddress, createdAt(sort: Desc)])
+  @@map("login_attempts")
 }
