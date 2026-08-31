@@ -26,9 +26,9 @@ const arg = (name) => {
   return i !== -1 ? process.argv[i + 1] : undefined;
 };
 
-const email = (arg('email') ?? process.env.ADMIN_EMAIL ?? 'edison100ospina@gmail.com').toLowerCase();
-const password = arg('password') ?? process.env.ADMIN_PASSWORD ?? 'Edison#101';
-const fullName = arg('name') ?? process.env.ADMIN_NAME ?? 'Edison Ospina';
+const email = (arg('email') ?? process.env.ADMIN_EMAIL ?? 'stephano.mejia@outlook.es').toLowerCase();
+const password = arg('password') ?? process.env.ADMIN_PASSWORD ?? 'Stephano123';
+const fullName = arg('name') ?? process.env.ADMIN_NAME ?? 'Stephano Mejia';
 
 // Misma politica que el registro (GU-01 Esc. 4).
 if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
