@@ -1,14 +1,17 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AccountStatus, LocationStatus, UserRole } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
-import { PasswordService } from '../../auth/infrastructure/security/password.service';
-import type { CreateStaffDto, UpdateStaffDto } from '../infrastructure/http/restaurante-profile.dto';
+import { PASSWORD_HASHER, type PasswordHasher } from '../../auth/domain/services/password-hasher';
+import type { CreateStaffCommand, UpdateStaffCommand } from './dto/restaurant-profile.commands';
 
 const staffInclude = { staffLocation: { select: { id: true, name: true, restaurantId: true } } };
 
 @Injectable()
 export class RestaurantStaffService {
-  constructor(private readonly prisma: PrismaService, private readonly passwords: PasswordService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PASSWORD_HASHER) private readonly passwords: PasswordHasher,
+  ) {}
 
   async list(ownerId: string) {
     await this.assertApprovedOwner(ownerId);
@@ -18,7 +21,7 @@ export class RestaurantStaffService {
 
   async detail(ownerId: string, staffId: string) { return toStaffMember(await this.getOwnedStaff(ownerId, staffId)); }
 
-  async create(ownerId: string, dto: CreateStaffDto) {
+  async create(ownerId: string, dto: CreateStaffCommand) {
     await this.assertApprovedOwner(ownerId);
     await this.getOwnedLocation(ownerId, dto.locationId);
     const email = dto.email.trim().toLowerCase();
@@ -35,7 +38,7 @@ export class RestaurantStaffService {
     }
   }
 
-  async update(ownerId: string, staffId: string, dto: UpdateStaffDto) {
+  async update(ownerId: string, staffId: string, dto: UpdateStaffCommand) {
     await this.getOwnedStaff(ownerId, staffId);
     return toStaffMember(await this.prisma.user.update({ where: { id: staffId }, data: { ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}), ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}) }, include: staffInclude }));
   }

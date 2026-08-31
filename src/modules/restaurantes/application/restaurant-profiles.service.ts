@@ -7,11 +7,11 @@ import {
 import { AccountStatus, LocationStatus } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import type {
-  CreateLocationDto,
-  CreateRestaurantDto,
-  SchedulePeriodDto,
-  UpdateLocationDto,
-} from '../infrastructure/http/restaurante-profile.dto';
+  CreateLocationCommand,
+  CreateRestaurantCommand,
+  SchedulePeriodCommand,
+  UpdateLocationCommand,
+} from './dto/restaurant-profile.commands';
 
 const DEFAULT_LOGO_URL = 'https://placehold.co/256x256?text=Parchemos';
 const DEFAULT_COVER_URL = 'https://placehold.co/1200x600?text=Restaurante';
@@ -23,7 +23,7 @@ const PLATFORM_TIME_ZONE = 'America/Bogota';
 export class RestaurantProfilesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRestaurant(ownerId: string, dto: CreateRestaurantDto) {
+  async createRestaurant(ownerId: string, dto: CreateRestaurantCommand) {
     return this.prisma.restaurant.create({
       data: { ownerId, businessName: dto.businessName.trim() },
       include: { locations: true },
@@ -38,7 +38,7 @@ export class RestaurantProfilesService {
     });
   }
 
-  async createLocation(ownerId: string, restaurantId: string, dto: CreateLocationDto) {
+  async createLocation(ownerId: string, restaurantId: string, dto: CreateLocationCommand) {
     await this.getOwnedRestaurant(ownerId, restaurantId);
     this.assertCoordinates(dto);
     return this.prisma.location.create({
@@ -54,7 +54,7 @@ export class RestaurantProfilesService {
     });
   }
 
-  async updateLocation(ownerId: string, locationId: string, dto: UpdateLocationDto) {
+  async updateLocation(ownerId: string, locationId: string, dto: UpdateLocationCommand) {
     await this.getOwnedLocation(ownerId, locationId);
     this.assertCoordinates(dto);
     return this.prisma.location.update({
@@ -64,7 +64,7 @@ export class RestaurantProfilesService {
     });
   }
 
-  async replaceSchedules(ownerId: string, locationId: string, schedules: SchedulePeriodDto[]) {
+  async replaceSchedules(ownerId: string, locationId: string, schedules: SchedulePeriodCommand[]) {
     await this.getOwnedLocation(ownerId, locationId);
     validateSchedules(schedules);
     return this.prisma.$transaction(async (tx) => {
@@ -203,7 +203,7 @@ export class RestaurantProfilesService {
     return location;
   }
 
-  private assertCoordinates(dto: Pick<CreateLocationDto, 'latitude' | 'longitude'>) {
+  private assertCoordinates(dto: Pick<CreateLocationCommand, 'latitude' | 'longitude'>) {
     if ((dto.latitude === undefined) !== (dto.longitude === undefined)) {
       throw new BadRequestException('Debes indicar latitud y longitud juntas.');
     }
@@ -215,7 +215,7 @@ const profileInclude = {
   images: { orderBy: { createdAt: 'asc' as const } },
 };
 
-function cleanLocation(dto: CreateLocationDto | UpdateLocationDto) {
+function cleanLocation(dto: CreateLocationCommand | UpdateLocationCommand) {
   return {
     ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
     ...(dto.description !== undefined ? { description: dto.description.trim() } : {}),
@@ -225,8 +225,8 @@ function cleanLocation(dto: CreateLocationDto | UpdateLocationDto) {
   };
 }
 
-function validateSchedules(schedules: SchedulePeriodDto[]) {
-  const grouped = new Map<number, SchedulePeriodDto[]>();
+function validateSchedules(schedules: SchedulePeriodCommand[]) {
+  const grouped = new Map<number, SchedulePeriodCommand[]>();
   for (const schedule of schedules) {
     if (schedule.dayOfWeek > 6) throw new BadRequestException('El día de la semana debe estar entre 0 y 6.');
     if (schedule.startsAt >= schedule.endsAt) throw new BadRequestException('La hora de inicio debe ser anterior a la hora de fin.');
