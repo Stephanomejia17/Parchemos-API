@@ -2,11 +2,13 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsEmail,
   IsInt,
   IsLatitude,
   IsLongitude,
   IsOptional,
   IsString,
+  IsUUID,
   IsUrl,
   Length,
   Matches,
@@ -85,4 +87,38 @@ export class RejectLocationDto {
   @IsString()
   @Length(5, 500, { message: 'El motivo de rechazo debe tener entre 5 y 500 caracteres.' })
   reason!: string;
+}
+
+export class CreateStaffDto {
+  @IsString() @Length(2, 160, { message: 'El nombre debe tener entre 2 y 160 caracteres.' })
+  fullName!: string;
+
+  @IsEmail({}, { message: 'Ingresa un correo electrónico válido.' })
+  @MaxLength(254)
+  email!: string;
+
+  @IsOptional() @IsString() @MaxLength(30)
+  phone?: string;
+
+  @IsUUID('4', { message: 'Selecciona una sede válida.' })
+  locationId!: string;
+
+  // El restaurante define la contraseña inicial y la comunica al empleado
+  // por su canal seguro hasta que se integre el proveedor de correo.
+  @IsString() @Length(8, 128, { message: 'La contraseña debe tener entre 8 y 128 caracteres.' })
+  @Matches(/(?=.*[A-Z])(?=.*\d)/, { message: 'La contraseña debe incluir una mayúscula y un número.' })
+  initialPassword!: string;
+}
+
+export class UpdateStaffDto {
+  @IsOptional() @IsString() @Length(2, 160, { message: 'El nombre debe tener entre 2 y 160 caracteres.' })
+  fullName?: string;
+
+  @IsOptional() @IsString() @MaxLength(30)
+  phone?: string;
+}
+
+export class ReassignStaffLocationDto {
+  @IsUUID('4', { message: 'Selecciona una sede válida.' })
+  locationId!: string;
 }

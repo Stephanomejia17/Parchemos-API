@@ -16,18 +16,25 @@ import { Public } from '../../../../common/decorators/public.decorator';
 import { Roles } from '../../../../common/decorators/roles.decorator';
 import { Role } from '../../../../common/enums/role.enum';
 import { RestaurantProfilesService } from '../../application/restaurant-profiles.service';
+import { RestaurantStaffService } from '../../application/restaurant-staff.service';
 import {
   CreateLocationDto,
   CreateRestaurantDto,
   ImageUrlDto,
   RejectLocationDto,
+  CreateStaffDto,
+  ReassignStaffLocationDto,
   ReplaceSchedulesDto,
+  UpdateStaffDto,
   UpdateLocationDto,
 } from './restaurante-profile.dto';
 
 @Controller('restaurantes')
 export class RestaurantesController {
-  constructor(private readonly profiles: RestaurantProfilesService) {}
+  constructor(
+    private readonly profiles: RestaurantProfilesService,
+    private readonly staff: RestaurantStaffService,
+  ) {}
 
   /** AN-01: una cuenta restaurante puede crear y administrar varias empresas. */
   @Post()
@@ -40,6 +47,49 @@ export class RestaurantesController {
   @Roles(Role.RESTAURANTE)
   listMine(@CurrentUser() user: AuthenticatedUser) {
     return this.profiles.listMine(user.id);
+  }
+
+  /** GU-05: solo el restaurante propietario y aprobado gestiona su personal. */
+  @Get('personal')
+  @Roles(Role.RESTAURANTE)
+  listStaff(@CurrentUser() user: AuthenticatedUser) {
+    return this.staff.list(user.id);
+  }
+
+  @Post('personal')
+  @Roles(Role.RESTAURANTE)
+  createStaff(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateStaffDto) {
+    return this.staff.create(user.id, dto);
+  }
+
+  @Get('personal/:staffId')
+  @Roles(Role.RESTAURANTE)
+  staffDetail(@CurrentUser() user: AuthenticatedUser, @Param('staffId') staffId: string) {
+    return this.staff.detail(user.id, staffId);
+  }
+
+  @Patch('personal/:staffId')
+  @Roles(Role.RESTAURANTE)
+  updateStaff(@CurrentUser() user: AuthenticatedUser, @Param('staffId') staffId: string, @Body() dto: UpdateStaffDto) {
+    return this.staff.update(user.id, staffId, dto);
+  }
+
+  @Put('personal/:staffId/sede')
+  @Roles(Role.RESTAURANTE)
+  reassignStaff(@CurrentUser() user: AuthenticatedUser, @Param('staffId') staffId: string, @Body() dto: ReassignStaffLocationDto) {
+    return this.staff.reassign(user.id, staffId, dto.locationId);
+  }
+
+  @Post('personal/:staffId/habilitar')
+  @Roles(Role.RESTAURANTE)
+  enableStaff(@CurrentUser() user: AuthenticatedUser, @Param('staffId') staffId: string) {
+    return this.staff.setEnabled(user.id, staffId, true);
+  }
+
+  @Post('personal/:staffId/deshabilitar')
+  @Roles(Role.RESTAURANTE)
+  disableStaff(@CurrentUser() user: AuthenticatedUser, @Param('staffId') staffId: string) {
+    return this.staff.setEnabled(user.id, staffId, false);
   }
 
   @Post(':restaurantId/sedes')

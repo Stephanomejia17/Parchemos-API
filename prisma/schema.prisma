@@ -87,6 +87,9 @@ model User {
   sessions            Session[]
   loginAttempts       LoginAttempt[]
   restaurants         Restaurant[]
+  /// Solo se usa cuando role = personal_restaurante (GU-05).
+  staffLocationId     String?       @map("sede_id") @db.Uuid
+  staffLocation       Location?     @relation("LocationStaff", fields: [staffLocationId], references: [id], onDelete: Restrict)
 
   @@index([status])
   @@index([role])
@@ -135,6 +138,7 @@ model Location {
   updatedAt       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
   schedules       LocationSchedule[]
   images          LocationImage[]
+  staffMembers    User[]           @relation("LocationStaff")
 
   @@index([restaurantId])
   @@index([status])

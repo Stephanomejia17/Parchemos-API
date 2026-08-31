@@ -54,6 +54,6 @@ import { TokenService } from './infrastructure/security/token.service';
       useClass: PrismaLoginAttemptRepository,
     },
   ],
-  exports: [JwtModule],
+  exports: [JwtModule, PasswordService],
 })
 export class AuthModule {}
