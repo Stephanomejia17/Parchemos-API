@@ -160,18 +160,10 @@ export class RestaurantProfilesService {
   async approve(locationId: string) {
     await this.findLocation(locationId);
     return this.prisma.$transaction(async (tx) => {
-      const location = await tx.location.update({
+      return tx.location.update({
         where: { id: locationId },
         data: { status: LocationStatus.activa, approvedAt: new Date(), rejectionReason: null },
-        include: { restaurant: { select: { ownerId: true } } },
       });
-      // La aprobación de una sede habilita la cuenta propietaria para operar.
-      // El nuevo estado se reflejará en el siguiente refresh/login del token.
-      await tx.user.update({
-        where: { id: location.restaurant.ownerId },
-        data: { status: AccountStatus.activa },
-      });
-      return location;
     });
   }
 
