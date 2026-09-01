@@ -10,6 +10,16 @@ export interface PublicUser {
   status: AccountStatus;
   /** GU-01 Esc. 2: el front usa esto para bloquear pedidos y reservas. */
   canOperate: boolean;
+  phone: string | null;
+  city: string | null;
+  profilePhotoUrl: string | null;
+  assignedLocation: {
+    id: string;
+    name: string;
+    address: string;
+    status: string;
+    restaurantName: string;
+  } | null;
 }
 
 export interface AuthResult {

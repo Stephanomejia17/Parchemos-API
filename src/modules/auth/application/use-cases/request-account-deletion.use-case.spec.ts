@@ -14,7 +14,7 @@ describe('RequestAccountDeletionUseCase', () => {
       findById: jest.fn(),
       requestAccountDeletion: jest.fn(),
     };
-    useCase = new RequestAccountDeletionUseCase(users as UserRepository);
+    useCase = new RequestAccountDeletionUseCase(users as unknown as UserRepository);
   });
 
   afterEach(() => {
@@ -85,6 +85,10 @@ function makeUser(overrides: Partial<ConstructorParameters<typeof User>[0]> = {}
     failedLoginAttempts: 0,
     lockedUntil: null,
     lastLoginAt: null,
+    phone: null,
+    city: null,
+    profilePhotoUrl: null,
+    assignedLocation: null,
     ...overrides,
   });
 }

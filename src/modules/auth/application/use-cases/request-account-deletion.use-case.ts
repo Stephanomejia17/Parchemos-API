@@ -44,9 +44,15 @@ export class RequestAccountDeletionUseCase {
       deletionEffectiveAt,
     );
     if (!updatedUser) {
-      throw new NotFoundException(
-        'No se pudo solicitar la eliminación de la cuenta.',
-      );
+      const currentUser = await this.users.findById(userId);
+      if (currentUser?.isDeletionPending() || currentUser?.deletionRequestedAt) {
+        throw new ConflictException({
+          code: 'ELIMINACION_YA_SOLICITADA',
+          message: 'La cuenta ya tiene una solicitud de eliminación pendiente.',
+          deletionEffectiveAt: currentUser.deletionEffectiveAt,
+        });
+      }
+      throw new NotFoundException('No se pudo solicitar la eliminación de la cuenta.');
     }
 
     return {

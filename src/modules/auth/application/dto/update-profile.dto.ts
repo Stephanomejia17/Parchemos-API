@@ -2,10 +2,12 @@ import { Transform } from 'class-transformer';
 import {
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   MaxLength,
   MinLength,
+  registerDecorator,
+  ValidationArguments,
+  ValidationOptions,
 } from 'class-validator';
 
 /**
@@ -13,12 +15,13 @@ import {
  * Reutiliza las validaciones del stack actual (class-validator).
  */
 export class UpdateProfileDto {
-  @IsString({ message: 'El nombre completo es obligatorio.' })
+  @IsOptional()
+  @IsString({ message: 'El nombre completo debe ser texto.' })
   @MinLength(2, { message: 'El nombre completo debe tener al menos 2 caracteres.' })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
-  fullName!: string;
+  fullName?: string;
 
   @IsOptional()
   @IsString({ message: 'El teléfono debe ser un texto válido.' })
@@ -33,23 +36,43 @@ export class UpdateProfileDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
-  phone?: string;
+  phone?: string | null;
 
-  @IsString({ message: 'La ciudad es obligatoria.' })
+  @IsOptional()
+  @IsString({ message: 'La ciudad debe ser texto.' })
   @MinLength(2, { message: 'La ciudad debe tener al menos 2 caracteres.' })
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
-  city!: string;
+  city?: string | null;
 
   @IsOptional()
-  @IsUrl(
-    { protocols: ['https'], require_protocol: true },
-    { message: 'La foto de perfil debe ser una URL HTTPS válida.' },
-  )
-  @MaxLength(2048, { message: 'La URL de la foto no puede superar 2048 caracteres.' })
+  @IsString()
+  @IsProfilePhoto()
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
-  profilePhotoUrl?: string;
+  profilePhotoUrl?: string | null;
+}
+
+function IsProfilePhoto(validationOptions?: ValidationOptions) {
+  return (object: object, propertyName: string) => {
+    registerDecorator({
+      name: 'isProfilePhoto',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: unknown) {
+          if (value === null) return true;
+          if (typeof value !== 'string') return false;
+          const match = /^data:image\/(jpeg|png);base64,(.+)$/.exec(value);
+          return !!match && Buffer.from(match[2], 'base64').byteLength <= 5 * 1024 * 1024;
+        },
+        defaultMessage(_args: ValidationArguments) {
+          return 'La foto debe ser JPG o PNG y no superar 5 MB.';
+        },
+      },
+    });
+  };
 }

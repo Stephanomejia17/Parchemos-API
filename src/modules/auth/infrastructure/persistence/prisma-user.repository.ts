@@ -27,6 +27,13 @@ type UserRow = {
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  staffLocation?: {
+    id: string;
+    name: string;
+    address: string;
+    status: string;
+    restaurant: { businessName: string };
+  } | null;
 };
 
 @Injectable()
@@ -34,13 +41,19 @@ export class PrismaUserRepository implements UserRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findById(id: string): Promise<User | null> {
-    const row = await this.prisma.user.findUnique({ where: { id } });
+    const row = await this.prisma.user.findUnique({
+      where: { id },
+      include: { staffLocation: { include: { restaurant: true } } },
+    });
     return row ? toDomain(row) : null;
   }
 
   async findByEmail(email: string): Promise<User | null> {
     // La columna es `citext`, asi que la comparacion ya ignora mayusculas.
-    const row = await this.prisma.user.findUnique({ where: { email } });
+    const row = await this.prisma.user.findUnique({
+      where: { email },
+      include: { staffLocation: { include: { restaurant: true } } },
+    });
     return row ? toDomain(row) : null;
   }
 
@@ -51,6 +64,8 @@ export class PrismaUserRepository implements UserRepository {
         passwordHash: data.passwordHash,
         fullName: data.fullName,
         phone: data.phone,
+        city: data.city,
+        profilePhotoUrl: data.profilePhotoUrl,
         role: data.role,
         // GU-01 Esc. 2: el restaurante nace pendiente de aprobacion.
         status:
@@ -92,7 +107,6 @@ export class PrismaUserRepository implements UserRepository {
           : {}),
       },
     });
-
     return toDomain(updated);
   }
 
@@ -101,20 +115,25 @@ export class PrismaUserRepository implements UserRepository {
     deletionRequestedAt: Date,
     deletionEffectiveAt: Date,
   ): Promise<User | null> {
-    const current = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!current) {
-      return null;
-    }
-
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
+    const result = await this.prisma.user.updateMany({
+      where: { id: userId, deletionRequestedAt: null },
       data: {
         deletionRequestedAt,
         deletionEffectiveAt,
         status: AccountStatus.PENDIENTE_ELIMINACION,
       },
     });
+    if (result.count === 0) {
+      return null;
+    }
 
+    const updated = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { staffLocation: { include: { restaurant: true } } },
+    });
+    if (!updated) {
+      return null;
+    }
     return toDomain(updated);
   }
 
@@ -160,6 +179,18 @@ function toDomain(row: UserRow): User {
     status: row.status as AccountStatus,
     deletionRequestedAt: row.deletionRequestedAt,
     deletionEffectiveAt: row.deletionEffectiveAt,
+    phone: row.phone,
+    city: row.city,
+    profilePhotoUrl: row.profilePhotoUrl,
+    assignedLocation: row.staffLocation
+      ? {
+          id: row.staffLocation.id,
+          name: row.staffLocation.name,
+          address: row.staffLocation.address,
+          status: row.staffLocation.status,
+          restaurantName: row.staffLocation.restaurant.businessName,
+        }
+      : null,
     suspensionReason: row.suspensionReason,
     failedLoginAttempts: row.failedLoginAttempts,
     lockedUntil: row.lockedUntil,

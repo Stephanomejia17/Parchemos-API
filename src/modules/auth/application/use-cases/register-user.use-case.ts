@@ -32,6 +32,8 @@ export class RegisterUserUseCase {
         passwordHash,
         fullName: dto.fullName,
         phone: dto.phone,
+        city: dto.city,
+        profilePhotoUrl: dto.profilePhotoUrl,
         role: dto.role,
         termsVersion: this.config.get<string>('TERMS_VERSION', '1.0'),
         acceptedAt: new Date(),

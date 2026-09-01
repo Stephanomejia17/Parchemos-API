@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import type { AuthenticatedUser } from '../decorators/current-user.decorator';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
+import { AccountStatus } from '../../modules/auth/domain/enums/account-status.enum';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -24,6 +25,9 @@ export class RolesGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request & { user?: AuthenticatedUser }>();
     const role = request.user?.role;
+    if (request.user?.status === AccountStatus.PENDIENTE_ELIMINACION) {
+      return false;
+    }
     return role !== undefined && requiredRoles.includes(role);
   }
 }

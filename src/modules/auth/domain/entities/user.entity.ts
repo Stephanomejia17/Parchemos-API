@@ -11,12 +11,24 @@ export interface UserProps {
   status: AccountStatus;
   deletionRequestedAt: Date | null;
   deletionEffectiveAt: Date | null;
+  phone: string | null;
+  city: string | null;
+  profilePhotoUrl: string | null;
+  assignedLocation: AssignedLocation | null;
   suspensionReason: string | null;
   failedLoginAttempts: number;
   lockedUntil: Date | null;
   lastLoginAt: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface AssignedLocation {
+  id: string;
+  name: string;
+  address: string;
+  status: string;
+  restaurantName: string;
 }
 
 /**
@@ -31,6 +43,10 @@ export class User extends BaseEntity {
   readonly status: AccountStatus;
   readonly deletionRequestedAt: Date | null;
   readonly deletionEffectiveAt: Date | null;
+  readonly phone: string | null;
+  readonly city: string | null;
+  readonly profilePhotoUrl: string | null;
+  readonly assignedLocation: AssignedLocation | null;
   readonly suspensionReason: string | null;
   readonly failedLoginAttempts: number;
   readonly lockedUntil: Date | null;
@@ -45,6 +61,10 @@ export class User extends BaseEntity {
     this.status = props.status;
     this.deletionRequestedAt = props.deletionRequestedAt;
     this.deletionEffectiveAt = props.deletionEffectiveAt;
+    this.phone = props.phone;
+    this.city = props.city;
+    this.profilePhotoUrl = props.profilePhotoUrl;
+    this.assignedLocation = props.assignedLocation;
     this.suspensionReason = props.suspensionReason;
     this.failedLoginAttempts = props.failedLoginAttempts;
     this.lockedUntil = props.lockedUntil;

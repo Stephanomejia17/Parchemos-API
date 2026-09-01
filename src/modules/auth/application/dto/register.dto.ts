@@ -4,11 +4,13 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
-  IsOptional,
   IsString,
   Length,
   Matches,
   MaxLength,
+  registerDecorator,
+  ValidationArguments,
+  ValidationOptions,
 } from 'class-validator';
 import { Role } from '../../../../common/enums/role.enum';
 
@@ -41,10 +43,24 @@ export class RegisterDto {
   )
   fullName!: string;
 
-  @IsOptional()
   @IsString()
+  @Matches(
+    /^(?:\+57\s?)?(?:3\d{2}|\d{2})\s?\d{3}\s?\d{2}\s?\d{2}$/,
+    { message: 'El teléfono debe tener un formato válido.' },
+  )
   @MaxLength(30)
-  phone?: string;
+  phone!: string;
+
+  @IsString()
+  @Length(2, 120, { message: 'Ingresa una ciudad válida.' })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  city!: string;
+
+  @IsString()
+  @IsProfilePhoto()
+  profilePhotoUrl!: string;
 
   // GU-01 Esc. 5: el rol es obligatorio y solo puede ser comensal o restaurante.
   @IsIn(SELF_SERVICE_ROLES, {
@@ -62,4 +78,30 @@ export class RegisterDto {
     message: 'Debes aceptar la política de tratamiento de datos.',
   })
   acceptedPrivacy!: boolean;
+}
+
+function IsProfilePhoto(validationOptions?: ValidationOptions) {
+  return (object: object, propertyName: string) => {
+    registerDecorator({
+      name: 'isProfilePhoto',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: unknown) {
+          if (typeof value !== 'string') return false;
+          const match = /^data:image\/(jpeg|png);base64,(.+)$/.exec(value);
+          if (!match) return false;
+          try {
+            return Buffer.from(match[2], 'base64').byteLength <= 5 * 1024 * 1024;
+          } catch {
+            return false;
+          }
+        },
+        defaultMessage(_args: ValidationArguments) {
+          return 'La foto debe ser JPG o PNG y no superar 5 MB.';
+        },
+      },
+    });
+  };
 }

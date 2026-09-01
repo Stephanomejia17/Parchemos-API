@@ -25,7 +25,10 @@ describe('RestaurantProfilesService', () => {
   });
 
   it('approve actualiza solo la sede seleccionada y no cambia User.status', async () => {
-    prisma.location.findUnique.mockResolvedValue({ id: 'loc-1' });
+    prisma.location.findUnique.mockResolvedValue({
+      id: 'loc-1', status: LocationStatus.pendiente_aprobacion,
+      name: 'Sede 1', address: 'Calle 123', schedules: [{ dayOfWeek: 1 }], images: [],
+    });
 
     const tx = {
       location: {
@@ -57,7 +60,10 @@ describe('RestaurantProfilesService', () => {
   });
 
   it('approve establece approvedAt y limpia rejectionReason', async () => {
-    prisma.location.findUnique.mockResolvedValue({ id: 'loc-2' });
+    prisma.location.findUnique.mockResolvedValue({
+      id: 'loc-2', status: LocationStatus.pendiente_aprobacion,
+      name: 'Sede 2', address: 'Calle 456', schedules: [{ dayOfWeek: 1 }], images: [],
+    });
 
     const tx = {
       location: {
@@ -135,5 +141,54 @@ describe('RestaurantProfilesService', () => {
     });
     expect(result.status).toBe(LocationStatus.pendiente_aprobacion);
     expect(result.rejectionReason).toBeNull();
+  });
+
+  it('no aprueba una sede incompleta', async () => {
+    prisma.location.findUnique.mockResolvedValue({
+      id: 'loc-incomplete', status: LocationStatus.pendiente_aprobacion,
+      name: 'Sede incompleta', address: 'Calle 1', schedules: [], images: [],
+    });
+
+    await expect(service.approve('loc-incomplete')).rejects.toThrow(
+      'La sede no tiene toda la información requerida.',
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('vuelve a revisión una sede activa cuando se modifica', async () => {
+    prisma.location.findFirst.mockResolvedValue({
+      id: 'loc-active', status: LocationStatus.activa,
+      name: 'Sede activa', address: 'Calle 1', schedules: [], images: [],
+    });
+    prisma.location.update.mockResolvedValue({
+      id: 'loc-active', status: LocationStatus.pendiente_aprobacion,
+    });
+
+    await service.updateLocation('owner-1', 'loc-active', { name: 'Sede actualizada' });
+
+    expect(prisma.location.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'loc-active' },
+      data: { name: 'Sede actualizada', status: LocationStatus.pendiente_aprobacion },
+    }));
+  });
+
+  it('aprueba solo la sede solicitada y no toca las demás', async () => {
+    prisma.location.findUnique.mockResolvedValue({
+      id: 'loc-new', status: LocationStatus.pendiente_aprobacion,
+      name: 'Nueva sede', address: 'Calle 99', schedules: [{ dayOfWeek: 1 }], images: [],
+    });
+    const tx = {
+      location: {
+        update: jest.fn().mockResolvedValue({ id: 'loc-new', status: LocationStatus.activa }),
+      },
+    };
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await service.approve('loc-new');
+
+    expect(tx.location.update).toHaveBeenCalledTimes(1);
+    expect(tx.location.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'loc-new' },
+    }));
   });
 });

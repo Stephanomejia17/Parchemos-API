@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AccountStatus, LocationStatus } from '../../../../generated/prisma/client';
+import { LocationStatus } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import type {
   CreateLocationCommand,
@@ -55,20 +55,31 @@ export class RestaurantProfilesService {
   }
 
   async updateLocation(ownerId: string, locationId: string, dto: UpdateLocationCommand) {
-    await this.getOwnedLocation(ownerId, locationId);
+    const location = await this.getOwnedLocation(ownerId, locationId);
     this.assertCoordinates(dto);
     return this.prisma.location.update({
       where: { id: locationId },
-      data: cleanLocation(dto),
+      data: {
+        ...cleanLocation(dto),
+        ...(location.status === LocationStatus.activa
+          ? { status: LocationStatus.pendiente_aprobacion }
+          : {}),
+      },
       include: { schedules: true, images: true },
     });
   }
 
   async replaceSchedules(ownerId: string, locationId: string, schedules: SchedulePeriodCommand[]) {
-    await this.getOwnedLocation(ownerId, locationId);
+    const location = await this.getOwnedLocation(ownerId, locationId);
     validateSchedules(schedules);
     return this.prisma.$transaction(async (tx) => {
       await tx.locationSchedule.deleteMany({ where: { locationId } });
+      if (location.status === LocationStatus.activa) {
+        await tx.location.update({
+          where: { id: locationId },
+          data: { status: LocationStatus.pendiente_aprobacion },
+        });
+      }
       if (schedules.length) {
         await tx.locationSchedule.createMany({
           data: schedules.map((item) => ({ ...item, locationId })),
@@ -81,19 +92,31 @@ export class RestaurantProfilesService {
   }
 
   async setImage(ownerId: string, locationId: string, kind: 'logo' | 'cover', url: string) {
-    await this.getOwnedLocation(ownerId, locationId);
+    const location = await this.getOwnedLocation(ownerId, locationId);
     return this.prisma.location.update({
       where: { id: locationId },
-      data: kind === 'logo' ? { logoUrl: url } : { coverUrl: url },
+      data: {
+        ...(kind === 'logo' ? { logoUrl: url } : { coverUrl: url }),
+        ...(location.status === LocationStatus.activa
+          ? { status: LocationStatus.pendiente_aprobacion }
+          : {}),
+      },
       include: { schedules: true, images: true },
     });
   }
 
   async addGalleryImage(ownerId: string, locationId: string, url: string) {
-    await this.getOwnedLocation(ownerId, locationId);
+    const location = await this.getOwnedLocation(ownerId, locationId);
     const count = await this.prisma.locationImage.count({ where: { locationId } });
     if (count >= 20) throw new BadRequestException('La galería permite máximo 20 imágenes.');
-    return this.prisma.locationImage.create({ data: { locationId, url } });
+    const image = await this.prisma.locationImage.create({ data: { locationId, url } });
+    if (location.status === LocationStatus.activa) {
+      await this.prisma.location.update({
+        where: { id: locationId },
+        data: { status: LocationStatus.pendiente_aprobacion },
+      });
+    }
+    return image;
   }
 
   async removeGalleryImage(ownerId: string, locationId: string, imageId: string) {
@@ -158,7 +181,22 @@ export class RestaurantProfilesService {
   }
 
   async approve(locationId: string) {
-    await this.findLocation(locationId);
+    const location = await this.prisma.location.findUnique({
+      where: { id: locationId },
+      include: profileInclude,
+    });
+    if (!location) throw new NotFoundException('La sede no existe.');
+    if (location.status !== LocationStatus.pendiente_aprobacion) {
+      throw new BadRequestException('Solo puedes aprobar una sede pendiente.');
+    }
+    const missing = missingRequiredProfileData(location);
+    if (missing.length) {
+      throw new BadRequestException({
+        code: 'PERFIL_INCOMPLETO',
+        message: 'La sede no tiene toda la información requerida.',
+        fields: missing,
+      });
+    }
     return this.prisma.$transaction(async (tx) => {
       return tx.location.update({
         where: { id: locationId },

@@ -7,7 +7,9 @@ export interface CreateUserData {
   email: string;
   passwordHash: string;
   fullName: string;
-  phone?: string;
+  phone: string;
+  city: string;
+  profilePhotoUrl: string;
   role: Role;
   termsVersion: string;
   acceptedAt: Date;

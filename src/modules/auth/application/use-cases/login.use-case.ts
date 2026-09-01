@@ -177,5 +177,9 @@ export function toPublicUser(user: User): PublicUser {
     role: user.role,
     status: user.status,
     canOperate: user.canOperate(),
+    phone: user.phone,
+    city: user.city,
+    profilePhotoUrl: user.profilePhotoUrl,
+    assignedLocation: user.assignedLocation,
   };
 }
