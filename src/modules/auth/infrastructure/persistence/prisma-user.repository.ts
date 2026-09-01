@@ -111,6 +111,7 @@ export class PrismaUserRepository implements UserRepository {
       data: {
         deletionRequestedAt,
         deletionEffectiveAt,
+        status: AccountStatus.PENDIENTE_ELIMINACION,
       },
     });
 
@@ -157,6 +158,8 @@ function toDomain(row: UserRow): User {
     fullName: row.fullName,
     role: row.role as Role,
     status: row.status as AccountStatus,
+    deletionRequestedAt: row.deletionRequestedAt,
+    deletionEffectiveAt: row.deletionEffectiveAt,
     suspensionReason: row.suspensionReason,
     failedLoginAttempts: row.failedLoginAttempts,
     lockedUntil: row.lockedUntil,

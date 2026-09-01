@@ -4,4 +4,5 @@ export enum AccountStatus {
   ACTIVA = 'activa',
   SUSPENDIDA = 'suspendida',
   DESHABILITADA = 'deshabilitada',
+  PENDIENTE_ELIMINACION = 'pendiente_eliminacion',
 }

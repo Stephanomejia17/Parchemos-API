@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -30,6 +31,7 @@ import { UpdateProfileUseCase } from '../../application/use-cases/update-profile
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUserUseCase } from '../../application/use-cases/register-user.use-case';
+import { RequestAccountDeletionUseCase } from '../../application/use-cases/request-account-deletion.use-case';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository';
 import type { UserRepository } from '../../domain/repositories/user.repository';
 
@@ -51,6 +53,7 @@ export class AuthController {
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logout: LogoutUseCase,
     private readonly updateProfile: UpdateProfileUseCase,
+    private readonly requestAccountDeletion: RequestAccountDeletionUseCase,
     private readonly config: ConfigService,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
@@ -132,6 +135,12 @@ export class AuthController {
   ) {
     const user = await this.updateProfile.execute(current.id, dto);
     return { user };
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.OK)
+  async requestDeletion(@CurrentUser() current: AuthenticatedUser) {
+    return this.requestAccountDeletion.execute(current.id);
   }
 
   private respondWithSession(res: Response, result: AuthResult) {

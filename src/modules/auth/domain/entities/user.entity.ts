@@ -9,6 +9,8 @@ export interface UserProps {
   fullName: string;
   role: Role;
   status: AccountStatus;
+  deletionRequestedAt: Date | null;
+  deletionEffectiveAt: Date | null;
   suspensionReason: string | null;
   failedLoginAttempts: number;
   lockedUntil: Date | null;
@@ -27,6 +29,8 @@ export class User extends BaseEntity {
   readonly fullName: string;
   readonly role: Role;
   readonly status: AccountStatus;
+  readonly deletionRequestedAt: Date | null;
+  readonly deletionEffectiveAt: Date | null;
   readonly suspensionReason: string | null;
   readonly failedLoginAttempts: number;
   readonly lockedUntil: Date | null;
@@ -39,6 +43,8 @@ export class User extends BaseEntity {
     this.fullName = props.fullName;
     this.role = props.role;
     this.status = props.status;
+    this.deletionRequestedAt = props.deletionRequestedAt;
+    this.deletionEffectiveAt = props.deletionEffectiveAt;
     this.suspensionReason = props.suspensionReason;
     this.failedLoginAttempts = props.failedLoginAttempts;
     this.lockedUntil = props.lockedUntil;
@@ -57,6 +63,10 @@ export class User extends BaseEntity {
 
   isDisabled(): boolean {
     return this.status === AccountStatus.DESHABILITADA;
+  }
+
+  isDeletionPending(): boolean {
+    return this.status === AccountStatus.PENDIENTE_ELIMINACION;
   }
 
   /**

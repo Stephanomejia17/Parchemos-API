@@ -31,11 +31,13 @@ enum UserRole {
 /// - activa: puede iniciar sesion (GU-02 Esc. 1)
 /// - suspendida: bloqueada por un administrador, con motivo (GU-02 Esc. 3)
 /// - deshabilitada: acceso revocado
+/// - pendiente_eliminacion: solicitud de eliminación dentro del plazo legal
 enum AccountStatus {
   pendiente_aprobacion
   activa
   suspendida
   deshabilitada
+  pendiente_eliminacion
 
   @@map("account_status")
 }
