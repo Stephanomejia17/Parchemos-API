@@ -49,6 +49,12 @@ export interface AppEnv {
   DATABASE_URL: string;
   JWT_ACCESS_SECRET: string;
   REFRESH_TOKEN_PEPPER: string;
+  PASSWORD_RESET_TOKEN_PEPPER: string;
+  BREVO_API_KEY: string;
+  BREVO_SENDER_EMAIL: string;
+  BREVO_SENDER_NAME: string;
+  PASSWORD_RESET_URL: string;
+  PASSWORD_RESET_TTL: string;
   JWT_ACCESS_TTL: string;
   JWT_REFRESH_TTL: string;
   JWT_ISSUER: string;
@@ -69,6 +75,15 @@ export function validateEnv(
     DATABASE_URL: requireString(config, 'DATABASE_URL'),
     JWT_ACCESS_SECRET: requireSecret(config, 'JWT_ACCESS_SECRET'),
     REFRESH_TOKEN_PEPPER: requireSecret(config, 'REFRESH_TOKEN_PEPPER'),
+    PASSWORD_RESET_TOKEN_PEPPER: requireSecret(
+      config,
+      'PASSWORD_RESET_TOKEN_PEPPER',
+    ),
+    BREVO_API_KEY: requireString(config, 'BREVO_API_KEY'),
+    BREVO_SENDER_EMAIL: requireString(config, 'BREVO_SENDER_EMAIL'),
+    BREVO_SENDER_NAME: (config.BREVO_SENDER_NAME as string) ?? 'Parchemos',
+    PASSWORD_RESET_URL: requireString(config, 'PASSWORD_RESET_URL'),
+    PASSWORD_RESET_TTL: (config.PASSWORD_RESET_TTL as string) ?? '30m',
     JWT_ACCESS_TTL: (config.JWT_ACCESS_TTL as string) ?? '15m',
     JWT_REFRESH_TTL: (config.JWT_REFRESH_TTL as string) ?? '30d',
     JWT_ISSUER: (config.JWT_ISSUER as string) ?? 'parchemos-api',
