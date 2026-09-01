@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Inject,
   NotFoundException,
+  Patch,
   Post,
   Req,
   Res,
@@ -19,11 +20,13 @@ import { Public } from '../../../../common/decorators/public.decorator';
 import { AuthResult } from '../../application/dto/auth-response.dto';
 import { LoginDto } from '../../application/dto/login.dto';
 import { RegisterDto } from '../../application/dto/register.dto';
+import { UpdateProfileDto } from '../../application/dto/update-profile.dto';
 import {
   LoginUseCase,
   RequestContext,
   toPublicUser,
 } from '../../application/use-cases/login.use-case';
+import { UpdateProfileUseCase } from '../../application/use-cases/update-profile.use-case';
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUserUseCase } from '../../application/use-cases/register-user.use-case';
@@ -47,6 +50,7 @@ export class AuthController {
     private readonly login: LoginUseCase,
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logout: LogoutUseCase,
+    private readonly updateProfile: UpdateProfileUseCase,
     private readonly config: ConfigService,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
@@ -119,6 +123,15 @@ export class AuthController {
       throw new NotFoundException('La cuenta ya no existe.');
     }
     return { user: toPublicUser(user) };
+  }
+
+  @Patch('me')
+  async updateMe(
+    @CurrentUser() current: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const user = await this.updateProfile.execute(current.id, dto);
+    return { user };
   }
 
   private respondWithSession(res: Response, result: AuthResult) {

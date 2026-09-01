@@ -5,6 +5,7 @@ import { User } from '../../domain/entities/user.entity';
 import { AccountStatus } from '../../domain/enums/account-status.enum';
 import {
   CreateUserData,
+  UpdateUserProfileData,
   UserRepository,
 } from '../../domain/repositories/user.repository';
 
@@ -13,6 +14,11 @@ type UserRow = {
   email: string;
   passwordHash: string;
   fullName: string;
+  phone: string | null;
+  profilePhotoUrl: string | null;
+  city: string | null;
+  deletionRequestedAt: Date | null;
+  deletionEffectiveAt: Date | null;
   role: string;
   status: string;
   suspensionReason: string | null;
@@ -57,6 +63,58 @@ export class PrismaUserRepository implements UserRepository {
       },
     });
     return toDomain(row);
+  }
+
+  async updateProfile(
+    userId: string,
+    data: UpdateUserProfileData,
+  ): Promise<User | null> {
+    const current = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!current) {
+      return null;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.fullName !== undefined ? { fullName: data.fullName.trim() } : {}),
+        ...(data.phone !== undefined
+          ? { phone: data.phone === null ? null : data.phone.trim() }
+          : {}),
+        ...(data.city !== undefined
+          ? { city: data.city === null ? null : data.city.trim() }
+          : {}),
+        ...(data.profilePhotoUrl !== undefined
+          ? {
+              profilePhotoUrl:
+                data.profilePhotoUrl === null ? null : data.profilePhotoUrl.trim(),
+            }
+          : {}),
+      },
+    });
+
+    return toDomain(updated);
+  }
+
+  async requestAccountDeletion(
+    userId: string,
+    deletionRequestedAt: Date,
+    deletionEffectiveAt: Date,
+  ): Promise<User | null> {
+    const current = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!current) {
+      return null;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        deletionRequestedAt,
+        deletionEffectiveAt,
+      },
+    });
+
+    return toDomain(updated);
   }
 
   /**

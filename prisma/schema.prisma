@@ -64,6 +64,10 @@ model User {
 
   fullName            String        @map("full_name")
   phone               String?
+  profilePhotoUrl     String?       @map("profile_photo_url")
+  city                String?       @map("city")
+  deletionRequestedAt DateTime?     @map("deletion_requested_at") @db.Timestamptz(6)
+  deletionEffectiveAt DateTime?     @map("deletion_effective_at") @db.Timestamptz(6)
 
   role                UserRole
   status              AccountStatus @default(activa)
