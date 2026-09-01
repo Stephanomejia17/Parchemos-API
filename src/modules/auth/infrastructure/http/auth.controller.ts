@@ -27,6 +27,10 @@ import {
 import { LogoutUseCase } from '../../application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from '../../application/use-cases/refresh-session.use-case';
 import { RegisterUserUseCase } from '../../application/use-cases/register-user.use-case';
+import { RequestPasswordResetUseCase } from '../../application/use-cases/request-password-reset.use-case';
+import { ResetPasswordUseCase } from '../../application/use-cases/reset-password.use-case';
+import { ForgotPasswordDto } from '../../application/dto/forgot-password.dto';
+import { ResetPasswordDto } from '../../application/dto/reset-password.dto';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository';
 import type { UserRepository } from '../../domain/repositories/user.repository';
 
@@ -47,6 +51,8 @@ export class AuthController {
     private readonly login: LoginUseCase,
     private readonly refreshSession: RefreshSessionUseCase,
     private readonly logout: LogoutUseCase,
+    private readonly requestPasswordReset: RequestPasswordResetUseCase,
+    private readonly resetPassword: ResetPasswordUseCase,
     private readonly config: ConfigService,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
@@ -109,6 +115,28 @@ export class AuthController {
       req.cookies?.[REFRESH_COOKIE] as string | undefined,
     );
     res.clearCookie(REFRESH_COOKIE, this.cookieOptions(0));
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() req: Request,
+  ) {
+    await this.requestPasswordReset.execute(dto.email, contextOf(req));
+    return {
+      message: 'Si el correo está registrado, recibirás un enlace de recuperación.',
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resetPasswordHandler(@Body() dto: ResetPasswordDto) {
+    await this.resetPassword.execute(dto.token, dto.password);
   }
 
   /** Datos del usuario autenticado; el front lo usa para pintar la sesion. */
