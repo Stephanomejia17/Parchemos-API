@@ -7,6 +7,7 @@ import { LogoutUseCase } from './application/use-cases/logout.use-case';
 import { RefreshSessionUseCase } from './application/use-cases/refresh-session.use-case';
 import { RegisterUserUseCase } from './application/use-cases/register-user.use-case';
 import { RequestAccountDeletionUseCase } from './application/use-cases/request-account-deletion.use-case';
+import { UpdateProfileUseCase } from './application/use-cases/update-profile.use-case';
 import { LOGIN_ATTEMPT_REPOSITORY } from './domain/repositories/login-attempt.repository';
 import { SESSION_REPOSITORY } from './domain/repositories/session.repository';
 import { USER_REPOSITORY } from './domain/repositories/user.repository';
@@ -44,6 +45,7 @@ import { TokenService } from './infrastructure/security/token.service';
   providers: [
     RegisterUserUseCase,
     RequestAccountDeletionUseCase,
+    UpdateProfileUseCase,
     LoginUseCase,
     RefreshSessionUseCase,
     LogoutUseCase,
