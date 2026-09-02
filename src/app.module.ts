@@ -8,12 +8,14 @@ import { validateEnv } from './config/env.validation';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
+import { StorageModule } from './infrastructure/storage/storage.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/infrastructure/guards/jwt-auth.guard';
 import { PedidosModule } from './modules/pedidos/pedidos.module';
 import { ResenasModule } from './modules/resenas/resenas.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
 import { RestaurantesModule } from './modules/restaurantes/restaurantes.module';
+import { ProductosModule } from './modules/productos/productos.module';
 
 @Module({
   imports: [
@@ -26,8 +28,10 @@ import { RestaurantesModule } from './modules/restaurantes/restaurantes.module';
     // con @Throttle (ver AuthController).
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
+    StorageModule,
     AuthModule,
     RestaurantesModule,
+    ProductosModule,
     PedidosModule,
     ReservasModule,
     ResenasModule,

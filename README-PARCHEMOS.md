@@ -87,3 +87,39 @@ verificado en Brevo.
 La solicitud responde con un mensaje genérico para no revelar si el correo
 existe. Al completar el cambio, el token se invalida y se revocan todas las
 sesiones activas del usuario.
+
+## Supabase Storage
+
+La API incluye `SupabaseStorageService` como servicio global compartido. Usa
+la API REST de Storage desde el backend; la `service_role` key nunca debe
+exponerse al frontend.
+
+Configura `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y
+`SUPABASE_STORAGE_BUCKET` en `.env`. El bucket debe existir en Supabase y ser
+público si se van a devolver URLs públicas.
+
+Endpoints protegidos para imágenes de sedes:
+
+- `POST /api/restaurantes/sedes/:locationId/logo/upload`
+- `POST /api/restaurantes/sedes/:locationId/portada/upload`
+- `POST /api/restaurantes/sedes/:locationId/galeria/upload`
+
+Envían `multipart/form-data` con el campo `file`. Se aceptan JPG, PNG y WEBP
+con un máximo de 5 MB. Los endpoints que reciben una URL se mantienen para
+compatibilidad.
+
+## Productos del menú
+
+El CRUD de productos está disponible para restaurantes propietarios y
+administradores:
+
+- `POST /api/restaurantes/:restaurantId/productos`
+- `GET /api/restaurantes/:restaurantId/productos?page=1&limit=20&category=bebidas&status=activo&featured=true`
+- `GET /api/productos/:id`
+- `PATCH /api/productos/:id`
+- `DELETE /api/productos/:id` (soft delete: cambia a `inactivo`)
+- `PATCH /api/productos/:id/destacado` con `{ "featured": true|false }`
+
+Los nombres son únicos por restaurante sin distinguir mayúsculas, el precio
+debe ser mayor que cero y las respuestas exitosas tienen el formato
+`{ success, data, message }`.

@@ -66,6 +66,9 @@ export interface AppEnv {
   PASSWORD_HASH_PARALLELISM: number;
   PORT: number;
   CORS_ORIGINS: string[];
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_STORAGE_BUCKET: string;
 }
 
 export function validateEnv(
@@ -106,6 +109,9 @@ export function validateEnv(
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),
+    SUPABASE_URL: requireString(config, 'SUPABASE_URL'),
+    SUPABASE_SERVICE_ROLE_KEY: requireSecret(config, 'SUPABASE_SERVICE_ROLE_KEY'),
+    SUPABASE_STORAGE_BUCKET: requireString(config, 'SUPABASE_STORAGE_BUCKET'),
   };
 
   if (validated.JWT_ACCESS_SECRET === validated.REFRESH_TOKEN_PEPPER) {

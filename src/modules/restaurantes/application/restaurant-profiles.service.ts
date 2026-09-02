@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { AccountStatus, LocationStatus } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { SupabaseStorageService } from '../../../infrastructure/storage/supabase-storage.service';
 import type {
   CreateLocationCommand,
   CreateRestaurantCommand,
@@ -21,7 +22,36 @@ const PLATFORM_TIME_ZONE = 'America/Bogota';
 
 @Injectable()
 export class RestaurantProfilesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: SupabaseStorageService,
+  ) {}
+
+  async uploadImage(ownerId: string, locationId: string, kind: 'logo' | 'cover' | 'gallery', file: { buffer: Buffer; mimetype: string; size: number }) {
+    const location = await this.getOwnedLocation(ownerId, locationId);
+    const uploaded = await this.storage.uploadImage(file, `locations/${locationId}/${kind}`);
+
+    if (kind === 'gallery') {
+      const count = await this.prisma.locationImage.count({ where: { locationId } });
+      if (count >= 5) {
+        await this.storage.remove(uploaded.path);
+        throw new BadRequestException('La galería permite máximo 5 imágenes.');
+      }
+      return this.prisma.locationImage.create({
+        data: { locationId, url: uploaded.publicUrl },
+      });
+    }
+
+    const previousUrl = kind === 'logo' ? location.logoUrl : location.coverUrl;
+    const updated = await this.prisma.location.update({
+      where: { id: locationId },
+      data: kind === 'logo' ? { logoUrl: uploaded.publicUrl } : { coverUrl: uploaded.publicUrl },
+      include: profileInclude,
+    });
+    const previousPath = previousUrl ? this.storage.pathFromPublicUrl(previousUrl) : null;
+    if (previousPath) await this.storage.remove(previousPath);
+    return updated;
+  }
 
   async createRestaurant(ownerId: string, dto: CreateRestaurantCommand) {
     return this.prisma.restaurant.create({

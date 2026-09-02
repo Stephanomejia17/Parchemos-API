@@ -22,9 +22,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : 'Error interno del servidor';
 
     response.status(status).json({
+      success: false,
+      data: null,
+      message,
       statusCode: status,
       timestamp: new Date().toISOString(),
-      message,
     });
   }
 }
