@@ -29,6 +29,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | POST   | `/api/auth/refresh`  | sí      | Renueva el access token con la cookie. Rota el refresh token. |
 | POST   | `/api/auth/logout`   | sí      | GU-02 Esc. 5. Revoca la sesión y borra la cookie. |
 | GET    | `/api/auth/me`       | no      | Datos del usuario autenticado. |
+| POST   | `/api/auth/forgot-password` | sí | Solicita un enlace de recuperación por correo. |
+| POST   | `/api/auth/reset-password` | sí | Cambia la contraseña usando un token de un solo uso. |
 
 Todo endpoint nuevo nace protegido: el `JwtAuthGuard` es global y solo lo
 esquivan los marcados con `@Public()`.
@@ -70,3 +72,54 @@ Las reglas que Prisma no modela (CHECKs, triggers, RLS) viven en
 > Las migraciones usan `DIRECT_URL` (puerto 5432). En Prisma 7 el
 > `datasource` del config no acepta `directUrl` y lo ignora en silencio, por eso
 > `prisma.config.ts` asigna `url: DIRECT_URL`.
+
+## Recuperación de contraseña con Brevo
+
+La autenticación continúa siendo propia de la API. Supabase almacena los
+tokens en `password_reset_tokens` y solo conserva su HMAC; Brevo envía el
+enlace de recuperación.
+
+Configura en `.env` `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`,
+`BREVO_SENDER_NAME`, `PASSWORD_RESET_URL`, `PASSWORD_RESET_TOKEN_PEPPER` y
+opcionalmente `PASSWORD_RESET_TTL` (por defecto `30m`). El remitente debe estar
+verificado en Brevo.
+
+La solicitud responde con un mensaje genérico para no revelar si el correo
+existe. Al completar el cambio, el token se invalida y se revocan todas las
+sesiones activas del usuario.
+
+## Supabase Storage
+
+La API incluye `SupabaseStorageService` como servicio global compartido. Usa
+la API REST de Storage desde el backend; la `service_role` key nunca debe
+exponerse al frontend.
+
+Configura `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y
+`SUPABASE_STORAGE_BUCKET` en `.env`. El bucket debe existir en Supabase y ser
+público si se van a devolver URLs públicas.
+
+Endpoints protegidos para imágenes de sedes:
+
+- `POST /api/restaurantes/sedes/:locationId/logo/upload`
+- `POST /api/restaurantes/sedes/:locationId/portada/upload`
+- `POST /api/restaurantes/sedes/:locationId/galeria/upload`
+
+Envían `multipart/form-data` con el campo `file`. Se aceptan JPG, PNG y WEBP
+con un máximo de 5 MB. Los endpoints que reciben una URL se mantienen para
+compatibilidad.
+
+## Productos del menú
+
+El CRUD de productos está disponible para restaurantes propietarios y
+administradores:
+
+- `POST /api/restaurantes/:restaurantId/productos`
+- `GET /api/restaurantes/:restaurantId/productos?page=1&limit=20&category=bebidas&status=activo&featured=true`
+- `GET /api/productos/:id`
+- `PATCH /api/productos/:id`
+- `DELETE /api/productos/:id` (soft delete: cambia a `inactivo`)
+- `PATCH /api/productos/:id/destacado` con `{ "featured": true|false }`
+
+Los nombres son únicos por restaurante sin distinguir mayúsculas, el precio
+debe ser mayor que cero y las respuestas exitosas tienen el formato
+`{ success, data, message }`.

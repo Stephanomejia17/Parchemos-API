@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,7 +10,10 @@ import {
   Patch,
   Post,
   Put,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../../common/decorators/current-user.decorator';
 import { Public } from '../../../../common/decorators/public.decorator';
@@ -128,16 +132,37 @@ export class RestaurantesController {
     return this.profiles.setImage(user.id, locationId, 'logo', dto.url);
   }
 
+  @Post('sedes/:locationId/logo/upload')
+  @Roles(Role.RESTAURANTE)
+  @UseInterceptors(FileInterceptor('file'))
+  uploadLogo(@CurrentUser() user: AuthenticatedUser, @Param('locationId') locationId: string, @UploadedFile() file: UploadedImageFile) {
+    return this.profiles.uploadImage(user.id, locationId, 'logo', requiredFile(file));
+  }
+
   @Put('sedes/:locationId/portada')
   @Roles(Role.RESTAURANTE)
   setCover(@CurrentUser() user: AuthenticatedUser, @Param('locationId') locationId: string, @Body() dto: ImageUrlDto) {
     return this.profiles.setImage(user.id, locationId, 'cover', dto.url);
   }
 
+  @Post('sedes/:locationId/portada/upload')
+  @Roles(Role.RESTAURANTE)
+  @UseInterceptors(FileInterceptor('file'))
+  uploadCover(@CurrentUser() user: AuthenticatedUser, @Param('locationId') locationId: string, @UploadedFile() file: UploadedImageFile) {
+    return this.profiles.uploadImage(user.id, locationId, 'cover', requiredFile(file));
+  }
+
   @Post('sedes/:locationId/galeria')
   @Roles(Role.RESTAURANTE)
   addGalleryImage(@CurrentUser() user: AuthenticatedUser, @Param('locationId') locationId: string, @Body() dto: ImageUrlDto) {
     return this.profiles.addGalleryImage(user.id, locationId, dto.url);
+  }
+
+  @Post('sedes/:locationId/galeria/upload')
+  @Roles(Role.RESTAURANTE)
+  @UseInterceptors(FileInterceptor('file'))
+  uploadGalleryImage(@CurrentUser() user: AuthenticatedUser, @Param('locationId') locationId: string, @UploadedFile() file: UploadedImageFile) {
+    return this.profiles.uploadImage(user.id, locationId, 'gallery', requiredFile(file));
   }
 
   @Delete('sedes/:locationId/galeria/:imageId')
@@ -189,4 +214,15 @@ export class RestaurantesController {
   reject(@Param('locationId') locationId: string, @Body() dto: RejectLocationDto) {
     return this.profiles.reject(locationId, dto.reason);
   }
+}
+
+interface UploadedImageFile {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
+
+function requiredFile(file: UploadedImageFile | undefined) {
+  if (!file) throw new BadRequestException('Debes adjuntar un archivo en el campo "file".');
+  return { buffer: file.buffer, mimetype: file.mimetype, size: file.size };
 }

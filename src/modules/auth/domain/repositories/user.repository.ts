@@ -43,4 +43,5 @@ export interface UserRepository {
   ): Promise<void>;
   /** Login correcto: reinicia el contador y actualiza la ultima entrada. */
   registerSuccessfulLogin(userId: string): Promise<void>;
+  updatePassword(userId: string, passwordHash: string): Promise<void>;
 }
