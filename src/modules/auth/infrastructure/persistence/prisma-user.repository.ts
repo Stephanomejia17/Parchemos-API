@@ -65,7 +65,7 @@ export class PrismaUserRepository implements UserRepository {
         fullName: data.fullName,
         phone: data.phone,
         city: data.city,
-        profilePhotoUrl: data.profilePhotoUrl,
+        profilePhotoUrl: data.profilePhotoUrl ?? null,
         role: data.role,
         // GU-01 Esc. 2: el restaurante nace pendiente de aprobacion.
         status:

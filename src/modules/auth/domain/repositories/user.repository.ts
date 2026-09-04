@@ -9,7 +9,8 @@ export interface CreateUserData {
   fullName: string;
   phone: string;
   city: string;
-  profilePhotoUrl: string;
+  /** Opcional: el registro (GU-01) ya no pide foto de perfil. */
+  profilePhotoUrl?: string | null;
   role: Role;
   termsVersion: string;
   acceptedAt: Date;

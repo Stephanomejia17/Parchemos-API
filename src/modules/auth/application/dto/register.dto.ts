@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsEmail,
   IsIn,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -58,9 +59,12 @@ export class RegisterDto {
   )
   city!: string;
 
+  // La foto de perfil no se pide al registrarse (GU-01): se sube despues
+  // desde "Mi perfil". Se sigue aceptando por si un cliente antiguo la manda.
+  @IsOptional()
   @IsString()
   @IsProfilePhoto()
-  profilePhotoUrl!: string;
+  profilePhotoUrl?: string;
 
   // GU-01 Esc. 5: el rol es obligatorio y solo puede ser comensal o restaurante.
   @IsIn(SELF_SERVICE_ROLES, {
