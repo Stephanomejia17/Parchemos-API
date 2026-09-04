@@ -1,18 +1,35 @@
-// Esquema de datos de Parchemos.
-// Alcance actual: GU-01 (Registro) y GU-02 (Inicio y cierre de sesion).
-// Las reglas que Prisma no modela (CHECKs, triggers, RLS) viven en
-// prisma/migrations/20260825000000_init_auth_gu01_gu02/migration.sql
+// ============================================================================
+// Esquema de datos de Parchemos (PARCHE-450).
+// ----------------------------------------------------------------------------
+// Convenciones:
+//   * Tablas en plural y columnas snake_case en la base; camelCase en Prisma.
+//   * `users` guarda identidad y estado de la cuenta; los datos personales
+//     viven en `user_profiles` y las preferencias en sus propias tablas.
+//   * Ninguna imagen se guarda en la base: solo la URL o la clave del objeto
+//     en el bucket. Un CHECK bloquea los data URI (base64).
+//   * Los importes son Decimal(12,2). Nunca Float para dinero.
+//   * Los agregados de solo lectura (avg_rating, balance de puntos, total
+//     pagado de una cuenta, totales del pedido) los mantienen triggers.
+//
+// Las reglas que Prisma no modela (CHECK, EXCLUDE, triggers, RLS, PostGIS)
+// viven en prisma/migrations/20260904040000_parchemos_modelo_v2/migration.sql
+// ============================================================================
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../generated/prisma"
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["partialIndexes"]
   // NestJS compila a CommonJS: sin esto el cliente generado usa import.meta.url
-  moduleFormat = "cjs"
+  moduleFormat    = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
 }
+
+// ============================================================================
+// Enumeraciones
+// ============================================================================
 
 /// Roles de la plataforma. GU-01 solo permite auto-registro de COMENSAL y
 /// RESTAURANTE; los demas se crean desde GU-05 / GU-06.
@@ -31,7 +48,7 @@ enum UserRole {
 /// - activa: puede iniciar sesion (GU-02 Esc. 1)
 /// - suspendida: bloqueada por un administrador, con motivo (GU-02 Esc. 3)
 /// - deshabilitada: acceso revocado
-/// - pendiente_eliminacion: solicitud de eliminación dentro del plazo legal
+/// - pendiente_eliminacion: solicitud de eliminacion dentro del plazo legal
 enum AccountStatus {
   pendiente_aprobacion
   activa
@@ -55,68 +72,13 @@ enum SessionRevokeReason {
   @@map("session_revoke_reason")
 }
 
-/// Cuenta de acceso a la plataforma (GU-01).
-model User {
-  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  /// Correo unico en toda la plataforma, case-insensitive (GU-01 Esc. 3).
-  email               String        @unique @db.Citext
-  /// Hash Argon2id/bcrypt. Nunca la contrasena en texto plano.
-  passwordHash        String        @map("password_hash")
-  passwordUpdatedAt   DateTime      @default(now()) @map("password_updated_at") @db.Timestamptz(6)
+/// Estado de la solicitud de operacion de una sede (PU-08).
+enum LocationStatus {
+  pendiente_aprobacion
+  activa
+  rechazada
 
-  fullName            String        @map("full_name")
-  phone               String?
-  profilePhotoUrl     String?       @map("profile_photo_url")
-  city                String?       @map("city")
-  deletionRequestedAt DateTime?     @map("deletion_requested_at") @db.Timestamptz(6)
-  deletionEffectiveAt DateTime?     @map("deletion_effective_at") @db.Timestamptz(6)
-
-  role                UserRole
-  status              AccountStatus @default(activa)
-  /// Obligatorio cuando status = suspendida (GU-02 Esc. 3).
-  suspensionReason    String?       @map("suspension_reason")
-  statusChangedAt     DateTime      @default(now()) @map("status_changed_at") @db.Timestamptz(6)
-
-  /// Aceptacion de terminos y politica de datos (GU-01 Esc. 6).
-  termsAcceptedAt     DateTime      @map("terms_accepted_at") @db.Timestamptz(6)
-  termsVersion        String        @default("1.0") @map("terms_version")
-  privacyAcceptedAt   DateTime      @map("privacy_accepted_at") @db.Timestamptz(6)
-
-  /// Bloqueo temporal por intentos fallidos (GU-02 Esc. 4).
-  failedLoginAttempts Int           @default(0) @map("failed_login_attempts") @db.SmallInt
-  lockedUntil         DateTime?     @map("locked_until") @db.Timestamptz(6)
-  lastLoginAt         DateTime?     @map("last_login_at") @db.Timestamptz(6)
-
-  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  sessions            Session[]
-  loginAttempts       LoginAttempt[]
-  passwordResetTokens PasswordResetToken[]
-  restaurants         Restaurant[]
-  /// Solo se usa cuando role = personal_restaurante (GU-05).
-  staffLocationId     String?       @map("sede_id") @db.Uuid
-  staffLocation       Location?     @relation("LocationStaff", fields: [staffLocationId], references: [id], onDelete: Restrict)
-
-  @@index([status])
-  @@index([role])
-  @@map("users")
-}
-
-/// Empresa propietaria de una o varias sedes. AN-01 permite que una misma
-/// cuenta de restaurante administre mas de un establecimiento.
-model Restaurant {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerId     String   @map("owner_id") @db.Uuid
-  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  businessName String  @map("business_name")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  locations   Location[]
-  products    Product[]
-
-  @@index([ownerId])
-  @@map("restaurants")
+  @@map("location_status")
 }
 
 enum ProductCategory {
@@ -135,81 +97,263 @@ enum ProductStatus {
   @@map("product_status")
 }
 
-model Product {
-  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  restaurantId String          @map("restaurant_id") @db.Uuid
-  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?
-  imageUrl     String?         @map("image_url")
-  category     ProductCategory
-  price        Decimal         @db.Decimal(12, 2)
-  status       ProductStatus   @default(activo)
-  featured     Boolean         @default(false)
-  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  @@index([restaurantId, status])
-  @@index([restaurantId, category])
-  @@index([restaurantId, featured])
-  @@map("products")
-}
-
-/// Estado de la solicitud de operacion de una sede.
-enum LocationStatus {
-  pendiente_aprobacion
+/// AN-05: una mesa desactivada deja de contar para nuevas reservas.
+enum TableStatus {
   activa
-  rechazada
+  inactiva
 
-  @@map("location_status")
+  @@map("table_status")
 }
 
-model Location {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  restaurantId    String         @map("restaurant_id") @db.Uuid
-  restaurant      Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  address         String
-  latitude        Float?         @map("latitude")
-  longitude       Float?         @map("longitude")
-  logoUrl         String?        @map("logo_url")
-  coverUrl        String?        @map("cover_url")
-  status          LocationStatus @default(rechazada)
-  rejectionReason String?        @map("rejection_reason")
-  approvedAt      DateTime?      @map("approved_at") @db.Timestamptz(6)
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
-  schedules       LocationSchedule[]
-  images          LocationImage[]
-  staffMembers    User[]           @relation("LocationStaff")
+/// AN-04: un descuento es porcentual o de monto fijo.
+enum DiscountType {
+  porcentaje
+  monto_fijo
 
-  @@index([restaurantId])
+  @@map("discount_type")
+}
+
+/// R-01..R-04.
+enum ReservationStatus {
+  pendiente
+  confirmada
+  cancelada
+  completada
+  no_show
+
+  @@map("reservation_status")
+}
+
+/// GP-03: modalidad del pedido.
+enum OrderFulfillment {
+  en_mesa
+  para_llevar
+  domicilio
+
+  @@map("order_fulfillment")
+}
+
+/// GP-08: ciclo de vida del pedido.
+enum OrderStatus {
+  borrador
+  pendiente
+  confirmado
+  en_preparacion
+  listo
+  en_camino
+  entregado
+  cancelado
+
+  @@map("order_status")
+}
+
+/// GP-07: cuanto del pedido esta cubierto por pagos aprobados.
+enum OrderPaymentStatus {
+  pendiente
+  parcial
+  pagado
+  reembolsado
+
+  @@map("order_payment_status")
+}
+
+/// GP-07: estado de conciliacion de la cuenta de mesa.
+enum BillStatus {
+  abierta
+  parcial
+  conciliada
+  anulada
+
+  @@map("bill_status")
+}
+
+/// GP-06: medios de pago soportados.
+enum PaymentMethod {
+  tarjeta_credito
+  tarjeta_debito
+  pse
+  nequi
+  daviplata
+  efectivo
+  puntos
+
+  @@map("payment_method")
+}
+
+enum PaymentStatus {
+  pendiente
+  aprobado
+  rechazado
+  reembolsado
+
+  @@map("payment_status")
+}
+
+/// GP-09: asignacion de un pedido a un repartidor.
+enum DeliveryAssignmentStatus {
+  asignado
+  aceptado
+  rechazado
+  en_camino
+  entregado
+  cancelado
+
+  @@map("delivery_assignment_status")
+}
+
+/// PU-05: tipos de asiento en el libro de puntos.
+enum LoyaltyTransactionType {
+  acumulacion
+  redencion
+  ajuste
+  expiracion
+
+  @@map("loyalty_transaction_type")
+}
+
+/// RC-01 / RC-02 + moderacion (GU-08).
+enum ReviewStatus {
+  publicada
+  oculta
+  eliminada
+
+  @@map("review_status")
+}
+
+/// DO-03 / DO-04 + moderacion (GU-08).
+enum PostStatus {
+  publicada
+  oculta
+  eliminada
+
+  @@map("post_status")
+}
+
+enum MediaType {
+  imagen
+  video
+
+  @@map("media_type")
+}
+
+/// GU-09: motivos de reporte.
+enum ReportReason {
+  spam
+  contenido_falso
+  contenido_ofensivo
+  otro
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  pendiente
+  en_revision
+  resuelto
+  descartado
+
+  @@map("report_status")
+}
+
+// ============================================================================
+// Identidad y acceso (GU-01, GU-02, GU-03)
+// ============================================================================
+
+/// Cuenta de acceso a la plataforma. Solo identidad, credenciales y estado:
+/// los datos personales estan en [UserProfile].
+model User {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Correo unico en toda la plataforma, case-insensitive (GU-01 Esc. 3).
+  email               String        @unique @db.Citext
+  /// Hash Argon2id/bcrypt. Nunca la contrasena en texto plano.
+  passwordHash        String        @map("password_hash")
+  passwordUpdatedAt   DateTime      @default(now()) @map("password_updated_at") @db.Timestamptz(6)
+
+  role                UserRole
+  status              AccountStatus @default(activa)
+  /// Obligatorio cuando status = suspendida (GU-02 Esc. 3 / GU-07).
+  suspensionReason    String?       @map("suspension_reason")
+  statusChangedAt     DateTime      @default(now()) @map("status_changed_at") @db.Timestamptz(6)
+
+  /// Aceptacion de terminos y politica de datos (GU-01 Esc. 6).
+  termsAcceptedAt     DateTime      @map("terms_accepted_at") @db.Timestamptz(6)
+  termsVersion        String        @default("1.0") @map("terms_version")
+  privacyAcceptedAt   DateTime      @map("privacy_accepted_at") @db.Timestamptz(6)
+
+  /// Bloqueo temporal por intentos fallidos (GU-02 Esc. 4).
+  failedLoginAttempts Int           @default(0) @map("failed_login_attempts") @db.SmallInt
+  lockedUntil         DateTime?     @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt         DateTime?     @map("last_login_at") @db.Timestamptz(6)
+
+  /// Solicitud de eliminacion de cuenta y fecha en que se hace efectiva.
+  deletionRequestedAt DateTime?     @map("deletion_requested_at") @db.Timestamptz(6)
+  deletionEffectiveAt DateTime?     @map("deletion_effective_at") @db.Timestamptz(6)
+
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  profile             UserProfile?
+  preferences         UserPreference?
+  cuisinePreferences  UserCuisinePreference[]
+  dietaryRestrictions UserDietaryRestriction[]
+  addresses           UserAddress[]
+  loyaltyAccount      LoyaltyAccount?
+  loyaltyTransactions LoyaltyTransaction[]
+
+  sessions            Session[]
+  loginAttempts       LoginAttempt[]
+  passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  restaurants         Restaurant[]
+  staffAssignments    RestaurantStaff[]
+
+  favorites           Favorite[]
+  posts               Post[]                @relation("PostAuthor")
+  moderatedPosts      Post[]                @relation("PostModerator")
+  postLikes           PostLike[]
+  locationReviews     LocationReview[]
+  productReviews      ProductReview[]
+  reportsFiled        ContentReport[]       @relation("ReportReporter")
+  reportsResolved     ContentReport[]       @relation("ReportResolver")
+
+  reservations        Reservation[]         @relation("ReservationDiner")
+  reservationsCancelled Reservation[]       @relation("ReservationCanceller")
+  reservationStatusChanges ReservationStatusHistory[]
+
+  orders              Order[]               @relation("OrderDiner")
+  ordersTakenAsStaff  Order[]               @relation("OrderStaff")
+  ordersAsCourier     Order[]               @relation("OrderCourier")
+  orderStatusChanges  OrderStatusHistory[]
+  payments            Payment[]
+  deliveryAssignments DeliveryAssignment[]
+  commissions         Commission[]
+
   @@index([status])
-  @@map("locations")
+  @@index([role])
+  @@map("users")
 }
 
-model LocationSchedule {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId String   @map("location_id") @db.Uuid
-  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  dayOfWeek  Int      @map("day_of_week") @db.SmallInt
-  startsAt   String   @map("starts_at") @db.VarChar(5)
-  endsAt     String   @map("ends_at") @db.VarChar(5)
+/// Datos personales del usuario (PU-01). Separados de [User] para no cargar la
+/// tabla que se lee en cada autenticacion y porque este bloque crece con el
+/// producto (PU-02, PU-03).
+model UserProfile {
+  userId    String    @id @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([locationId, dayOfWeek])
-  @@map("location_schedules")
-}
+  fullName  String    @map("full_name")
+  phone     String?
+  /// URL publica o clave del objeto en el bucket. Nunca base64 (CHECK en la BD).
+  photoUrl  String?   @map("photo_url")
+  city      String?
+  birthDate DateTime? @map("birth_date") @db.Date
+  bio       String?
 
-model LocationImage {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId String   @map("location_id") @db.Uuid
-  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  url        String
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@index([locationId])
-  @@map("location_images")
+  @@map("user_profiles")
 }
 
 /// Refresh tokens vigentes. El logout marca revokedAt (GU-02 Esc. 5 y 6).
@@ -230,31 +374,29 @@ model Session {
 
   ipAddress        String?              @map("ip_address") @db.Inet
   userAgent        String?              @map("user_agent")
-
   createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId])
+  @@index([userId, expiresAt], map: "sessions_activas_idx", where: raw("(revoked_at IS NULL)"))
   @@map("sessions")
 }
 
 /// Bitacora de intentos de inicio de sesion, base del bloqueo temporal
 /// y de la auditoria de accesos (GU-02 Esc. 2 y 4).
 model LoginAttempt {
-  id              BigInt   @id @default(autoincrement())
+  id             BigInt   @id @default(autoincrement())
 
   /// Se guarda aunque el correo no exista, para limitar por identificador
   /// sin revelar si esta registrado.
-  emailAttempted  String   @map("email_attempted") @db.Citext
-  userId          String?  @map("user_id") @db.Uuid
-  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  emailAttempted String   @map("email_attempted") @db.Citext
+  userId         String?  @map("user_id") @db.Uuid
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  successful      Boolean
-  failureReason   String?  @map("failure_reason")
-
-  ipAddress       String?  @map("ip_address") @db.Inet
-  userAgent       String?  @map("user_agent")
-
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  successful     Boolean
+  failureReason  String?  @map("failure_reason")
+  ipAddress      String?  @map("ip_address") @db.Inet
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([emailAttempted, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
@@ -262,7 +404,7 @@ model LoginAttempt {
   @@map("login_attempts")
 }
 
-/// Tokens de recuperación de contraseña de un solo uso.
+/// Tokens de recuperacion de contrasena de un solo uso (GU-03).
 model PasswordResetToken {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId    String    @map("user_id") @db.Uuid
@@ -277,4 +419,901 @@ model PasswordResetToken {
   @@index([userId, expiresAt])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+/// Bitacora de acciones administrativas y de moderacion: cambios de rol
+/// (GU-06), suspensiones (GU-07) y eliminacion de contenido (GU-08).
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String?  @map("actor_id") @db.Uuid
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id") @db.Uuid
+  reason     String?
+  metadata   Json     @default("{}")
+  ipAddress  String?  @map("ip_address") @db.Inet
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([actorId, createdAt(sort: Desc)], map: "audit_logs_actor_idx")
+  @@index([entityType, entityId, createdAt(sort: Desc)], map: "audit_logs_entity_idx")
+  @@map("audit_logs")
+}
+
+/// Notificaciones in-app (cambios de reserva, de pedido, de estado de cuenta,
+/// aprobacion/rechazo de sede y moderacion de contenido).
+model Notification {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  body       String?
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id") @db.Uuid
+  data       Json      @default("{}")
+  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)], map: "notifications_inbox_idx")
+  @@index([userId, createdAt(sort: Desc)], map: "notifications_unread_idx", where: raw("(read_at IS NULL)"))
+  @@map("notifications")
+}
+
+// ============================================================================
+// Preferencias del comensal (PU-02, PU-03) y direcciones (GP-03, GP-10)
+// ============================================================================
+
+/// Catalogo de tipos de cocina. Alimenta el filtro por categoria (MB-01) y las
+/// preferencias del comensal (PU-02).
+model CuisineType {
+  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String                  @unique @db.Citext
+  name        String
+  isActive    Boolean                 @default(true) @map("is_active")
+  createdAt   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  locations   LocationCuisine[]
+  preferredBy UserCuisinePreference[]
+
+  @@map("cuisine_types")
+}
+
+/// Restricciones alimentarias declarables por el comensal (PU-02 Esc. 3).
+model DietaryRestriction {
+  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug       String                   @unique @db.Citext
+  name       String
+  isActive   Boolean                  @default(true) @map("is_active")
+  createdAt  DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  users      UserDietaryRestriction[]
+
+  @@map("dietary_restrictions")
+}
+
+/// Rango de precio y distancia preferidos (PU-02).
+model UserPreference {
+  userId        String   @id @map("user_id") @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceRangeMin Int?     @map("price_range_min") @db.SmallInt
+  priceRangeMax Int?     @map("price_range_max") @db.SmallInt
+  maxDistanceKm Decimal? @map("max_distance_km") @db.Decimal(5, 1)
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_preferences")
+}
+
+model UserCuisinePreference {
+  userId        String      @map("user_id") @db.Uuid
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cuisineTypeId String      @map("cuisine_type_id") @db.Uuid
+  cuisineType   CuisineType @relation(fields: [cuisineTypeId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([userId, cuisineTypeId])
+  @@map("user_cuisine_preferences")
+}
+
+model UserDietaryRestriction {
+  userId               String             @map("user_id") @db.Uuid
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dietaryRestrictionId String             @map("dietary_restriction_id") @db.Uuid
+  dietaryRestriction   DietaryRestriction @relation(fields: [dietaryRestrictionId], references: [id], onDelete: Cascade)
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([userId, dietaryRestrictionId])
+  @@map("user_dietary_restrictions")
+}
+
+/// Libreta de direcciones del comensal para pedidos a domicilio (GP-03, GP-10).
+model UserAddress {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String?
+  addressLine String   @map("address_line")
+  details     String?
+  city        String
+  latitude    Float?
+  longitude   Float?
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  orders      Order[]
+
+  @@unique([userId], map: "user_addresses_one_default_idx", where: raw("is_default"))
+  @@index([userId], map: "user_addresses_user_idx")
+  @@map("user_addresses")
+}
+
+// ============================================================================
+// Negocio: restaurantes, sedes, carta y personal (AN-01..AN-05, PU-06, GU-05)
+// ============================================================================
+
+/// Empresa propietaria de una o varias sedes (PU-06 multi-sede).
+model Restaurant {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId        String       @map("owner_id") @db.Uuid
+  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  businessName   String       @map("business_name")
+  legalName      String?      @map("legal_name")
+  /// NIT o identificacion tributaria.
+  taxId          String?      @map("tax_id")
+  /// Comision pactada con la plataforma, entre 0 y 1 (AE-01, AE-02).
+  commissionRate Decimal      @default(0.1000) @map("commission_rate") @db.Decimal(6, 4)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  locations      Location[]
+  products       Product[]
+  orders         Order[]
+  commissions    Commission[]
+
+  @@unique([taxId], map: "restaurants_tax_id_key", where: raw("(tax_id IS NOT NULL)"))
+  @@index([ownerId])
+  @@map("restaurants")
+}
+
+/// Sede (establecimiento fisico). Es la unidad que el comensal ve, califica,
+/// reserva y a la que pide (AN-01, PU-06, PU-08).
+model Location {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurantId    String                    @map("restaurant_id") @db.Uuid
+  restaurant      Restaurant                @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?
+  address         String
+  phone           String?
+  latitude        Float?
+  longitude       Float?
+  /// Punto geografico derivado de latitude/longitude por trigger. Las consultas
+  /// por cercania (DO-01) usan el indice GiST sobre esta columna via SQL crudo.
+  geog            Unsupported("geography")?
+
+  /// URL publica o clave del objeto en el bucket. Nunca base64.
+  logoUrl         String?                   @map("logo_url")
+  coverUrl        String?                   @map("cover_url")
+
+  /// Rango de precio 1..4 ($..$$$$) para el filtro de MB-01.
+  priceRange      Int?                      @map("price_range") @db.SmallInt
+  /// Agregados de LocationReview mantenidos por trigger (DO-02, RC-01).
+  avgRating       Decimal                   @default(0) @map("avg_rating") @db.Decimal(3, 2)
+  ratingCount     Int                       @default(0) @map("rating_count")
+
+  status          LocationStatus            @default(pendiente_aprobacion)
+  rejectionReason String?                   @map("rejection_reason")
+  approvedAt      DateTime?                 @map("approved_at") @db.Timestamptz(6)
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  schedules       LocationSchedule[]
+  images          LocationImage[]
+  cuisines        LocationCuisine[]
+  menu            LocationProduct[]
+  staff           RestaurantStaff[]
+  tables          DiningTable[]
+  discounts       Discount[]
+  reservations    Reservation[]
+  orders          Order[]
+  bills           Bill[]
+  reviews         LocationReview[]
+  favorites       Favorite[]
+  posts           Post[]
+  loyaltyRewards  LoyaltyReward[]
+  commissions     Commission[]
+
+  @@unique([id, restaurantId], map: "locations_id_restaurant_key")
+  @@index([restaurantId])
+  @@index([status])
+  @@index([geog], type: Gist)
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "locations_name_trgm_idx", type: Gin)
+  @@index([priceRange, avgRating(sort: Desc)], map: "locations_public_price_idx", where: raw("(status = 'activa'::location_status)"))
+  @@index([avgRating(sort: Desc), ratingCount(sort: Desc)], map: "locations_public_rating_idx", where: raw("(status = 'activa'::location_status)"))
+  @@map("locations")
+}
+
+/// Franjas de atencion por dia. Un EXCLUDE en la base impide solaparlas
+/// (AN-01, PARCHE-148). Un dia sin filas es un dia cerrado.
+model LocationSchedule {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String   @map("location_id") @db.Uuid
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  /// 0 = domingo .. 6 = sabado
+  dayOfWeek  Int      @map("day_of_week") @db.SmallInt
+  startsAt   DateTime @map("starts_at") @db.Time(6)
+  endsAt     DateTime @map("ends_at") @db.Time(6)
+
+  @@index([locationId, dayOfWeek])
+  @@map("location_schedules")
+}
+
+/// Galeria de la sede (AN-01). Solo referencias al bucket.
+model LocationImage {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String   @map("location_id") @db.Uuid
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  url        String
+  caption    String?
+  position   Int      @default(0) @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([locationId])
+  @@map("location_images")
+}
+
+/// Tipos de cocina de la sede: filtro por categoria (MB-01) y recomendaciones
+/// (PU-03).
+model LocationCuisine {
+  locationId    String      @map("location_id") @db.Uuid
+  location      Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  cuisineTypeId String      @map("cuisine_type_id") @db.Uuid
+  cuisineType   CuisineType @relation(fields: [cuisineTypeId], references: [id], onDelete: Cascade)
+
+  @@id([locationId, cuisineTypeId])
+  @@index([cuisineTypeId], map: "location_cuisines_cuisine_idx")
+  @@map("location_cuisines")
+}
+
+/// Vinculo entre una cuenta personal_restaurante y las sedes donde opera
+/// (GU-05). Revocar el acceso conserva el historial (PARCHE-286).
+model RestaurantStaff {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String    @map("location_id") @db.Uuid
+  location   Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  position   String?
+  isActive   Boolean   @default(true) @map("is_active")
+  hiredAt    DateTime  @default(now()) @map("hired_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, locationId], map: "restaurant_staff_user_location_key")
+  @@index([locationId], map: "restaurant_staff_location_idx", where: raw("is_active"))
+  @@index([userId], map: "restaurant_staff_user_idx")
+  @@map("restaurant_staff")
+}
+
+/// Catalogo maestro de platos del negocio (AN-02). La disponibilidad y el
+/// precio por sede se resuelven en [LocationProduct] (AN-03).
+model Product {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurantId  String            @map("restaurant_id") @db.Uuid
+  restaurant    Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  /// URL publica o clave del objeto en el bucket. Nunca base64.
+  imageUrl      String?           @map("image_url")
+  category      ProductCategory
+  price         Decimal           @db.Decimal(12, 2)
+  status        ProductStatus     @default(activo)
+  featured      Boolean           @default(false)
+  /// Agregados de ProductReview mantenidos por trigger (RC-02).
+  avgRating     Decimal           @default(0) @map("avg_rating") @db.Decimal(3, 2)
+  ratingCount   Int               @default(0) @map("rating_count")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  availability  LocationProduct[]
+  discounts     DiscountProduct[]
+  reviews       ProductReview[]
+  orderItems    OrderItem[]
+
+  @@unique([id, restaurantId], map: "products_id_restaurant_key")
+  @@index([restaurantId, status])
+  @@index([restaurantId, category])
+  @@index([restaurantId, featured])
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "products_name_trgm_idx", type: Gin)
+  @@map("products")
+}
+
+/// Disponibilidad y precio del plato en cada sede (AN-03). Las FK compuestas
+/// impiden asociar un producto a la sede de otro restaurante.
+model LocationProduct {
+  locationId        String     @map("location_id") @db.Uuid
+  productId         String     @map("product_id") @db.Uuid
+  restaurantId      String     @map("restaurant_id") @db.Uuid
+  location          Location   @relation(fields: [locationId, restaurantId], references: [id, restaurantId], onDelete: Cascade, map: "location_products_location_fk")
+  product           Product    @relation(fields: [productId, restaurantId], references: [id, restaurantId], onDelete: Cascade, map: "location_products_product_fk")
+
+  isAvailable       Boolean    @default(true) @map("is_available")
+  /// Precio propio de la sede. Nulo = usa Product.price.
+  priceOverride     Decimal?   @map("price_override") @db.Decimal(12, 2)
+  unavailableReason String?    @map("unavailable_reason")
+  updatedAt         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([locationId, productId])
+  @@index([locationId], map: "location_products_available_idx", where: raw("is_available"))
+  @@map("location_products")
+}
+
+/// Mesas de la sede y su capacidad (AN-05). qrToken identifica la mesa al
+/// escanear el codigo QR (GP-04).
+model DiningTable {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId   String        @map("location_id") @db.Uuid
+  location     Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  code         String
+  capacity     Int           @db.SmallInt
+  status       TableStatus   @default(activa)
+  qrToken      String        @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex'::text)")) @map("qr_token")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  reservations Reservation[]
+  orders       Order[]
+  bills        Bill[]
+
+  @@unique([locationId, code], map: "dining_tables_code_key")
+  @@unique([id, locationId], map: "dining_tables_id_location_key")
+  @@index([locationId], map: "dining_tables_location_idx", where: raw("(status = 'activa'::table_status)"))
+  @@map("dining_tables")
+}
+
+/// Promociones con vigencia, activables y destacables en el perfil (AN-04).
+model Discount {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId  String            @map("location_id") @db.Uuid
+  location    Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  type        DiscountType
+  value       Decimal           @db.Decimal(12, 2)
+  startsAt    DateTime          @map("starts_at") @db.Timestamptz(6)
+  endsAt      DateTime          @map("ends_at") @db.Timestamptz(6)
+  isActive    Boolean           @default(true) @map("is_active")
+  isFeatured  Boolean           @default(false) @map("is_featured")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  products    DiscountProduct[]
+
+  @@index([locationId], map: "discounts_featured_idx", where: raw("is_featured"))
+  @@index([locationId, startsAt, endsAt], map: "discounts_location_period_idx", where: raw("is_active"))
+  @@map("discounts")
+}
+
+/// Alcance del descuento. Sin filas, aplica a toda la carta de la sede.
+model DiscountProduct {
+  discountId String   @map("discount_id") @db.Uuid
+  discount   Discount @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  productId  String   @map("product_id") @db.Uuid
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([discountId, productId])
+  @@map("discount_products")
+}
+
+// ============================================================================
+// Reservas (R-01..R-04)
+// ============================================================================
+
+model Reservation {
+  id                 String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId         String                     @map("location_id") @db.Uuid
+  location           Location                   @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  dinerId            String                     @map("diner_id") @db.Uuid
+  diner              User                       @relation("ReservationDiner", fields: [dinerId], references: [id], onDelete: Restrict)
+  /// La FK compuesta garantiza que la mesa pertenezca a la sede de la reserva.
+  tableId            String?                    @map("table_id") @db.Uuid
+  table              DiningTable?               @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "reservations_table_fk")
+
+  reservedFor        DateTime                   @map("reserved_for") @db.Timestamptz(6)
+  partySize          Int                        @map("party_size") @db.SmallInt
+  status             ReservationStatus          @default(confirmada)
+  notes              String?
+
+  confirmedAt        DateTime?                  @map("confirmed_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?                  @map("cancelled_at") @db.Timestamptz(6)
+  cancelledById      String?                    @map("cancelled_by") @db.Uuid
+  cancelledBy        User?                      @relation("ReservationCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancellationReason String?                    @map("cancellation_reason")
+
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  statusHistory      ReservationStatusHistory[]
+  loyaltyTransactions LoyaltyTransaction[]
+
+  @@unique([tableId, reservedFor], map: "reservations_table_slot_idx", where: raw("((table_id IS NOT NULL) AND (status = ANY (ARRAY['pendiente'::reservation_status, 'confirmada'::reservation_status])))"))
+  @@index([locationId, reservedFor], map: "reservations_location_when_idx")
+  @@index([dinerId, reservedFor(sort: Desc)], map: "reservations_diner_when_idx")
+  @@index([locationId, status, reservedFor], map: "reservations_status_idx")
+  @@map("reservations")
+}
+
+/// Trazabilidad de la reserva. La alimenta un trigger.
+model ReservationStatusHistory {
+  id            BigInt             @id @default(autoincrement())
+  reservationId String             @map("reservation_id") @db.Uuid
+  reservation   Reservation        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  fromStatus    ReservationStatus? @map("from_status")
+  toStatus      ReservationStatus  @map("to_status")
+  changedById   String?            @map("changed_by") @db.Uuid
+  changedBy     User?              @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  note          String?
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([reservationId, createdAt(sort: Desc)], map: "reservation_status_history_idx")
+  @@map("reservation_status_history")
+}
+
+// ============================================================================
+// Cuentas, pedidos y pagos (GP-01..GP-10)
+// ============================================================================
+
+/// Cuenta de una mesa: agrupa varios pedidos para dividir el pago (GP-07).
+/// totalAmount y paidAmount los mantienen triggers.
+model Bill {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId  String       @map("location_id") @db.Uuid
+  location    Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  tableId     String?      @map("table_id") @db.Uuid
+  table       DiningTable? @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "bills_table_fk")
+
+  status      BillStatus   @default(abierta)
+  totalAmount Decimal      @default(0) @map("total_amount") @db.Decimal(12, 2)
+  paidAmount  Decimal      @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  openedAt    DateTime     @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt    DateTime?    @map("closed_at") @db.Timestamptz(6)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  orders      Order[]
+  payments    Payment[]
+
+  @@unique([tableId], map: "bills_open_per_table_idx", where: raw("((table_id IS NOT NULL) AND (status = ANY (ARRAY['abierta'::bill_status, 'parcial'::bill_status])))"))
+  @@index([locationId, openedAt(sort: Desc)], map: "bills_location_open_idx", where: raw("(status <> 'conciliada'::bill_status)"))
+  @@map("bills")
+}
+
+/// Pedido de un comensal en una sede (GP-01..GP-10).
+/// subtotal y total los recalcula un trigger a partir de [OrderItem].
+model Order {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Consecutivo legible para el personal de sala.
+  orderNumber         BigInt                @unique @default(autoincrement()) @map("order_number")
+
+  locationId          String                @map("location_id") @db.Uuid
+  restaurantId        String                @map("restaurant_id") @db.Uuid
+  /// FK compuesta: la sede debe pertenecer al restaurante indicado.
+  location            Location              @relation(fields: [locationId, restaurantId], references: [id, restaurantId], map: "orders_location_fk")
+  restaurant          Restaurant            @relation(fields: [restaurantId], references: [id], onDelete: Restrict, map: "orders_restaurant_fk")
+
+  billId              String?               @map("bill_id") @db.Uuid
+  bill                Bill?                 @relation(fields: [billId], references: [id], onDelete: SetNull)
+
+  dinerId             String?               @map("diner_id") @db.Uuid
+  diner               User?                 @relation("OrderDiner", fields: [dinerId], references: [id], onDelete: SetNull)
+  createdByStaffId    String?               @map("created_by_staff_id") @db.Uuid
+  createdByStaff      User?                 @relation("OrderStaff", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  courierId           String?               @map("courier_id") @db.Uuid
+  courier             User?                 @relation("OrderCourier", fields: [courierId], references: [id], onDelete: SetNull)
+
+  /// GP-04: mesa identificada por el QR. FK compuesta contra la sede.
+  tableId             String?               @map("table_id") @db.Uuid
+  table               DiningTable?          @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "orders_table_fk")
+
+  fulfillment         OrderFulfillment
+  status              OrderStatus           @default(borrador)
+  paymentStatus       OrderPaymentStatus    @default(pendiente) @map("payment_status")
+
+  subtotal            Decimal               @default(0) @db.Decimal(12, 2)
+  discountTotal       Decimal               @default(0) @map("discount_total") @db.Decimal(12, 2)
+  deliveryFee         Decimal               @default(0) @map("delivery_fee") @db.Decimal(12, 2)
+  total               Decimal               @default(0) @db.Decimal(12, 2)
+  currency            String                @default("COP") @db.Char(3)
+
+  /// Referencia a la libreta y copia de la direccion: el pedido conserva a
+  /// donde se envio aunque el comensal borre la direccion (GP-03, GP-10).
+  deliveryAddressId   String?               @map("delivery_address_id") @db.Uuid
+  deliveryAddress     UserAddress?          @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull)
+  deliveryAddressLine String?               @map("delivery_address_line")
+  deliveryDetails     String?               @map("delivery_details")
+  deliveryCity        String?               @map("delivery_city")
+  deliveryLatitude    Float?                @map("delivery_latitude")
+  deliveryLongitude   Float?                @map("delivery_longitude")
+
+  notes               String?
+  placedAt            DateTime?             @map("placed_at") @db.Timestamptz(6)
+  deliveredAt         DateTime?             @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt         DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason  String?               @map("cancellation_reason")
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  items               OrderItem[]
+  statusHistory       OrderStatusHistory[]
+  payments            Payment[]
+  deliveryAssignment  DeliveryAssignment?
+  commission          Commission?
+  loyaltyTransactions LoyaltyTransaction[]
+
+  @@index([billId], map: "orders_bill_idx", where: raw("(bill_id IS NOT NULL)"))
+  @@index([courierId, createdAt(sort: Desc)], map: "orders_courier_idx", where: raw("(courier_id IS NOT NULL)"))
+  @@index([dinerId, createdAt(sort: Desc)], map: "orders_diner_idx")
+  @@index([locationId, status, createdAt(sort: Desc)], map: "orders_location_status_idx")
+  @@index([restaurantId, placedAt(sort: Desc)], map: "orders_restaurant_placed_idx", where: raw("(placed_at IS NOT NULL)"))
+  @@index([tableId], map: "orders_table_open_idx", where: raw("((table_id IS NOT NULL) AND (status <> 'cancelado'::order_status))"))
+  @@map("orders")
+}
+
+/// Linea del pedido. Guarda copia del nombre y precio del plato: editar la
+/// carta no debe alterar pedidos ya realizados (PARCHE-156).
+model OrderItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId     String   @map("order_id") @db.Uuid
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?  @map("product_id") @db.Uuid
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  productName String   @map("product_name")
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  quantity    Int      @db.SmallInt
+  /// unitPrice * quantity, calculado por trigger.
+  lineTotal   Decimal  @default(0) @map("line_total") @db.Decimal(12, 2)
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([orderId], map: "order_items_order_idx")
+  @@index([productId], map: "order_items_product_idx", where: raw("(product_id IS NOT NULL)"))
+  @@map("order_items")
+}
+
+/// Trazabilidad del pedido (GP-08, PARCHE-439). La alimenta un trigger.
+model OrderStatusHistory {
+  id          BigInt       @id @default(autoincrement())
+  orderId     String       @map("order_id") @db.Uuid
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus  OrderStatus? @map("from_status")
+  toStatus    OrderStatus  @map("to_status")
+  changedById String?      @map("changed_by") @db.Uuid
+  changedBy   User?        @relation(fields: [changedById], references: [id], onDelete: SetNull)
+  note        String?
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orderId, createdAt(sort: Desc)], map: "order_status_history_idx")
+  @@map("order_status_history")
+}
+
+/// Transacciones de pago sobre un pedido o sobre una cuenta de mesa
+/// (GP-06, GP-07). idempotencyKey impide registrar dos veces el mismo pago.
+model Payment {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billId            String?       @map("bill_id") @db.Uuid
+  bill              Bill?         @relation(fields: [billId], references: [id], onDelete: SetNull)
+  orderId           String?       @map("order_id") @db.Uuid
+  order             Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payerId           String?       @map("payer_id") @db.Uuid
+  payer             User?         @relation(fields: [payerId], references: [id], onDelete: SetNull)
+
+  method            PaymentMethod
+  status            PaymentStatus @default(pendiente)
+  amount            Decimal       @db.Decimal(12, 2)
+  currency          String        @default("COP") @db.Char(3)
+  provider          String?
+  providerPaymentId String?       @map("provider_payment_id")
+  idempotencyKey    String        @unique @map("idempotency_key")
+  failureReason     String?       @map("failure_reason")
+  authorizedAt      DateTime?     @map("authorized_at") @db.Timestamptz(6)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([provider, providerPaymentId], map: "payments_provider_ref_idx", where: raw("((provider IS NOT NULL) AND (provider_payment_id IS NOT NULL))"))
+  @@index([billId], map: "payments_bill_idx", where: raw("(bill_id IS NOT NULL)"))
+  @@index([orderId], map: "payments_order_idx", where: raw("(order_id IS NOT NULL)"))
+  @@index([payerId, createdAt(sort: Desc)], map: "payments_payer_idx", where: raw("(payer_id IS NOT NULL)"))
+  @@map("payments")
+}
+
+/// Asignaciones de un pedido a repartidores, con rechazos y reasignaciones
+/// (GP-09). El indice parcial deja una sola asignacion vigente por pedido.
+model DeliveryAssignment {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId         String                   @map("order_id") @db.Uuid
+  order           Order                    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courierId       String                   @map("courier_id") @db.Uuid
+  courier         User                     @relation(fields: [courierId], references: [id], onDelete: Restrict)
+  status          DeliveryAssignmentStatus @default(asignado)
+  assignedAt      DateTime                 @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  respondedAt     DateTime?                @map("responded_at") @db.Timestamptz(6)
+  pickedUpAt      DateTime?                @map("picked_up_at") @db.Timestamptz(6)
+  deliveredAt     DateTime?                @map("delivered_at") @db.Timestamptz(6)
+  rejectionReason String?                  @map("rejection_reason")
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([orderId], map: "delivery_assignments_active_idx", where: raw("(status = ANY (ARRAY['asignado'::delivery_assignment_status, 'aceptado'::delivery_assignment_status, 'en_camino'::delivery_assignment_status]))"))
+  @@index([courierId, assignedAt(sort: Desc)], map: "delivery_assignments_courier_idx")
+  @@index([orderId, assignedAt(sort: Desc)], map: "delivery_assignments_order_idx")
+  @@map("delivery_assignments")
+}
+
+/// Liquidacion por pedido: ingreso bruto, comision de la plataforma y neto del
+/// afiliado (AE-01, AE-02).
+model Commission {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String     @unique @map("order_id") @db.Uuid
+  order            Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  restaurantId     String     @map("restaurant_id") @db.Uuid
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  locationId       String     @map("location_id") @db.Uuid
+  location         Location   @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  courierId        String?    @map("courier_id") @db.Uuid
+  courier          User?      @relation(fields: [courierId], references: [id], onDelete: SetNull)
+
+  grossAmount      Decimal    @map("gross_amount") @db.Decimal(12, 2)
+  commissionRate   Decimal    @map("commission_rate") @db.Decimal(6, 4)
+  commissionAmount Decimal    @map("commission_amount") @db.Decimal(12, 2)
+  courierPayout    Decimal    @default(0) @map("courier_payout") @db.Decimal(12, 2)
+  netAmount        Decimal    @map("net_amount") @db.Decimal(12, 2)
+  settledAt        DateTime?  @map("settled_at") @db.Timestamptz(6)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([courierId, createdAt(sort: Desc)], map: "commissions_courier_idx", where: raw("(courier_id IS NOT NULL)"))
+  @@index([locationId, createdAt(sort: Desc)], map: "commissions_location_idx")
+  @@index([restaurantId, createdAt(sort: Desc)], map: "commissions_restaurant_idx")
+  @@map("commissions")
+}
+
+// ============================================================================
+// Fidelizacion (PU-05)
+// ============================================================================
+
+/// Tasa de conversion vigente. Un EXCLUDE impide periodos solapados.
+model LoyaltyRate {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Puntos acreditados por cada unidad monetaria gastada.
+  pointsPerCurrency Decimal   @map("points_per_currency") @db.Decimal(12, 6)
+  /// Valor en COP de un punto al redimir (ej. 10 => 100 puntos = $1.000).
+  currencyPerPoint  Decimal   @map("currency_per_point") @db.Decimal(12, 4)
+  effectiveFrom     DateTime  @default(now()) @map("effective_from") @db.Timestamptz(6)
+  effectiveTo       DateTime? @map("effective_to") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("loyalty_rates")
+}
+
+/// Saldo de puntos. Lo mantiene un trigger sobre [LoyaltyTransaction]; el
+/// CHECK balance >= 0 impide redimir mas de lo disponible (PU-05 Esc. 3).
+model LoyaltyAccount {
+  userId    String   @id @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance   Int      @default(0)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("loyalty_accounts")
+}
+
+/// Beneficios redimibles con puntos. locationId nulo = beneficio de plataforma.
+model LoyaltyReward {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId   String?              @map("location_id") @db.Uuid
+  location     Location?            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  pointsCost   Int                  @map("points_cost")
+  isActive     Boolean              @default(true) @map("is_active")
+  validFrom    DateTime?            @map("valid_from") @db.Timestamptz(6)
+  validTo      DateTime?            @map("valid_to") @db.Timestamptz(6)
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  redemptions  LoyaltyTransaction[]
+
+  @@map("loyalty_rewards")
+}
+
+/// Libro mayor de puntos: positivo acumula, negativo redime (PU-05).
+model LoyaltyTransaction {
+  id            BigInt                 @id @default(autoincrement())
+  userId        String                 @map("user_id") @db.Uuid
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          LoyaltyTransactionType
+  points        Int
+  /// Saldo resultante, escrito por el trigger que aplica el asiento.
+  balanceAfter  Int                    @map("balance_after")
+
+  orderId       String?                @map("order_id") @db.Uuid
+  order         Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reservationId String?                @map("reservation_id") @db.Uuid
+  reservation   Reservation?           @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  rewardId      String?                @map("reward_id") @db.Uuid
+  reward        LoyaltyReward?         @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+
+  description   String?
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)], map: "loyalty_transactions_user_idx")
+  @@map("loyalty_transactions")
+}
+
+// ============================================================================
+// Calificaciones (RC-01, RC-02)
+// ============================================================================
+
+/// Calificacion de la sede. Una por comensal: el POST hace upsert
+/// (PARCHE-103/107). El promedio de la sede lo recalcula un trigger.
+model LocationReview {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String          @map("location_id") @db.Uuid
+  location   Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  userId     String          @map("user_id") @db.Uuid
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int             @db.SmallInt
+  comment    String?
+  status     ReviewStatus    @default(publicada)
+  editedAt   DateTime?       @map("edited_at") @db.Timestamptz(6)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  reports    ContentReport[]
+
+  @@unique([locationId, userId], map: "location_reviews_user_key")
+  @@index([locationId, createdAt(sort: Desc)], map: "location_reviews_location_idx", where: raw("(status = 'publicada'::review_status)"))
+  @@index([userId, createdAt(sort: Desc)], map: "location_reviews_user_idx")
+  @@map("location_reviews")
+}
+
+/// Calificacion del producto. Una por comensal (PARCHE-113/117).
+model ProductReview {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String          @map("product_id") @db.Uuid
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String          @map("user_id") @db.Uuid
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int             @db.SmallInt
+  comment   String?
+  status    ReviewStatus    @default(publicada)
+  editedAt  DateTime?       @map("edited_at") @db.Timestamptz(6)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  reports   ContentReport[]
+
+  @@unique([productId, userId], map: "product_reviews_user_key")
+  @@index([productId, createdAt(sort: Desc)], map: "product_reviews_product_idx", where: raw("(status = 'publicada'::review_status)"))
+  @@index([userId, createdAt(sort: Desc)], map: "product_reviews_user_idx")
+  @@map("product_reviews")
+}
+
+// ============================================================================
+// Contenido social (DO-03, DO-04, DO-05) y moderacion (GU-08, GU-09)
+// ============================================================================
+
+/// Publicacion del feed. El indice (createdAt, id) sostiene la paginacion por
+/// cursor, sin OFFSET (PARCHE-77).
+model Post {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId      String          @map("author_id") @db.Uuid
+  author        User            @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  /// DO-04: se puede publicar sin asociar restaurante.
+  locationId    String?         @map("location_id") @db.Uuid
+  location      Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  caption       String?
+  status        PostStatus      @default(publicada)
+  /// Lo mantiene un trigger sobre [PostLike].
+  likeCount     Int             @default(0) @map("like_count")
+
+  /// GU-08: eliminar contenido exige motivo y queda auditado.
+  removedById   String?         @map("removed_by") @db.Uuid
+  removedBy     User?           @relation("PostModerator", fields: [removedById], references: [id], onDelete: SetNull)
+  removalReason String?         @map("removal_reason")
+  removedAt     DateTime?       @map("removed_at") @db.Timestamptz(6)
+
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  media         PostMedia[]
+  likes         PostLike[]
+  reports       ContentReport[]
+
+  @@index([authorId, createdAt(sort: Desc)], map: "posts_author_idx")
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "posts_feed_idx", where: raw("(status = 'publicada'::post_status)"))
+  @@index([locationId, createdAt(sort: Desc)], map: "posts_location_idx", where: raw("(location_id IS NOT NULL)"))
+  @@map("posts")
+}
+
+/// Metadatos del archivo publicado (PARCHE-89). El binario vive en el bucket
+/// de objetos; aqui solo la clave y sus metadatos.
+model PostMedia {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId          String    @map("post_id") @db.Uuid
+  post            Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaType       MediaType @map("media_type")
+  storageKey      String    @map("storage_key")
+  mimeType        String    @map("mime_type")
+  /// Maximo 50 MB, validado por CHECK (PARCHE-81/85).
+  sizeBytes       BigInt    @map("size_bytes")
+  durationSeconds Int?      @map("duration_seconds")
+  width           Int?
+  height          Int?
+  position        Int       @default(0) @db.SmallInt
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([postId, position], map: "post_media_post_idx")
+  @@map("post_media")
+}
+
+model PostLike {
+  postId    String   @map("post_id") @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([postId, userId])
+  @@index([userId, createdAt(sort: Desc)], map: "post_likes_user_idx")
+  @@map("post_likes")
+}
+
+/// DO-05: la PK compuesta evita duplicados por doble clic (PARCHE-98).
+model Favorite {
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String   @map("location_id") @db.Uuid
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([userId, locationId])
+  @@index([locationId], map: "favorites_location_idx")
+  @@map("favorites")
+}
+
+/// Cola de moderacion (GU-09). Se usan tres FK reales en vez de un puntero
+/// polimorfico para no perder integridad referencial; un CHECK exige que
+/// exactamente una este presente.
+model ContentReport {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId       String          @map("reporter_id") @db.Uuid
+  reporter         User            @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  postId           String?         @map("post_id") @db.Uuid
+  post             Post?           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  locationReviewId String?         @map("location_review_id") @db.Uuid
+  locationReview   LocationReview? @relation(fields: [locationReviewId], references: [id], onDelete: Cascade)
+  productReviewId  String?         @map("product_review_id") @db.Uuid
+  productReview    ProductReview?  @relation(fields: [productReviewId], references: [id], onDelete: Cascade)
+
+  reason           ReportReason
+  details          String?
+  status           ReportStatus    @default(pendiente)
+  resolvedById     String?         @map("resolved_by") @db.Uuid
+  resolvedBy       User?           @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(6)
+  resolutionNote   String?         @map("resolution_note")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([reporterId, locationReviewId], map: "content_reports_lreview_key", where: raw("(location_review_id IS NOT NULL)"))
+  @@unique([reporterId, postId], map: "content_reports_post_key", where: raw("(post_id IS NOT NULL)"))
+  @@unique([reporterId, productReviewId], map: "content_reports_preview_key", where: raw("(product_review_id IS NOT NULL)"))
+  @@index([status, createdAt], map: "content_reports_queue_idx", where: raw("(status = ANY (ARRAY['pendiente'::report_status, 'en_revision'::report_status]))"))
+  @@map("content_reports")
 }

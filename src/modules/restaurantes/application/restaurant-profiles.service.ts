@@ -191,23 +191,23 @@ export class RestaurantProfilesService {
   }
 
   async pendingForReview() {
-    return this.prisma.location.findMany({
+    const rows = await this.prisma.location.findMany({
       where: { status: LocationStatus.pendiente_aprobacion },
-      include: { restaurant: { include: { owner: { select: { id: true, fullName: true, email: true } } } }, ...profileInclude },
+      include: { restaurant: { include: { owner: ownerSelect } }, ...profileInclude },
       orderBy: { updatedAt: 'asc' },
     });
+    return rows.map(withFlatOwner);
   }
 
   async locationsForAdmin() {
-    return this.prisma.location.findMany({
+    const rows = await this.prisma.location.findMany({
       include: {
-        restaurant: {
-          include: { owner: { select: { id: true, fullName: true, email: true } } },
-        },
+        restaurant: { include: { owner: ownerSelect } },
         ...profileInclude,
       },
       orderBy: { updatedAt: 'desc' },
     });
+    return rows.map(withFlatOwner);
   }
 
   async approve(locationId: string) {
@@ -274,6 +274,22 @@ const profileInclude = {
   schedules: { orderBy: [{ dayOfWeek: 'asc' as const }, { startsAt: 'asc' as const }] },
   images: { orderBy: { createdAt: 'asc' as const } },
 };
+
+// El nombre del propietario vive en `user_profiles`; se aplana aqui para que la
+// respuesta del panel de administracion siga exponiendo `owner.fullName`.
+const ownerSelect = {
+  select: { id: true, email: true, profile: { select: { fullName: true } } },
+} as const;
+
+function withFlatOwner<
+  T extends { restaurant: { owner: { id: string; email: string; profile: { fullName: string } | null } } },
+>(row: T) {
+  const { profile, ...owner } = row.restaurant.owner;
+  return {
+    ...row,
+    restaurant: { ...row.restaurant, owner: { ...owner, fullName: profile?.fullName ?? '' } },
+  };
+}
 
 function cleanLocation(dto: CreateLocationCommand | UpdateLocationCommand) {
   return {

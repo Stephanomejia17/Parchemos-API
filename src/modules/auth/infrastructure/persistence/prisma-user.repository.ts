@@ -9,14 +9,25 @@ import {
   UserRepository,
 } from '../../domain/repositories/user.repository';
 
+/**
+ * Los datos personales viven en `user_profiles` y la sede asignada al personal
+ * en `restaurant_staff`. El dominio sigue viendo un `User` plano: el aplanado
+ * ocurre aqui, en el unico punto que conoce el esquema.
+ */
+const userInclude = {
+  profile: true,
+  staffAssignments: {
+    where: { isActive: true },
+    include: { location: { include: { restaurant: true } } },
+    orderBy: { hiredAt: 'desc' },
+    take: 1,
+  },
+} as const;
+
 type UserRow = {
   id: string;
   email: string;
   passwordHash: string;
-  fullName: string;
-  phone: string | null;
-  profilePhotoUrl: string | null;
-  city: string | null;
   deletionRequestedAt: Date | null;
   deletionEffectiveAt: Date | null;
   role: string;
@@ -27,13 +38,21 @@ type UserRow = {
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  staffLocation?: {
-    id: string;
-    name: string;
-    address: string;
-    status: string;
-    restaurant: { businessName: string };
+  profile?: {
+    fullName: string;
+    phone: string | null;
+    photoUrl: string | null;
+    city: string | null;
   } | null;
+  staffAssignments?: {
+    location: {
+      id: string;
+      name: string;
+      address: string;
+      status: string;
+      restaurant: { businessName: string };
+    };
+  }[];
 };
 
 @Injectable()
@@ -43,7 +62,7 @@ export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     const row = await this.prisma.user.findUnique({
       where: { id },
-      include: { staffLocation: { include: { restaurant: true } } },
+      include: userInclude,
     });
     return row ? toDomain(row) : null;
   }
@@ -52,7 +71,7 @@ export class PrismaUserRepository implements UserRepository {
     // La columna es `citext`, asi que la comparacion ya ignora mayusculas.
     const row = await this.prisma.user.findUnique({
       where: { email },
-      include: { staffLocation: { include: { restaurant: true } } },
+      include: userInclude,
     });
     return row ? toDomain(row) : null;
   }
@@ -62,10 +81,6 @@ export class PrismaUserRepository implements UserRepository {
       data: {
         email: data.email,
         passwordHash: data.passwordHash,
-        fullName: data.fullName,
-        phone: data.phone,
-        city: data.city,
-        profilePhotoUrl: data.profilePhotoUrl ?? null,
         role: data.role,
         // GU-01 Esc. 2: el restaurante nace pendiente de aprobacion.
         status:
@@ -75,7 +90,16 @@ export class PrismaUserRepository implements UserRepository {
         termsAcceptedAt: data.acceptedAt,
         privacyAcceptedAt: data.acceptedAt,
         termsVersion: data.termsVersion,
+        profile: {
+          create: {
+            fullName: data.fullName,
+            phone: data.phone ?? null,
+            city: data.city ?? null,
+            photoUrl: data.profilePhotoUrl ?? null,
+          },
+        },
       },
+      include: userInclude,
     });
     return toDomain(row);
   }
@@ -84,28 +108,46 @@ export class PrismaUserRepository implements UserRepository {
     userId: string,
     data: UpdateUserProfileData,
   ): Promise<User | null> {
-    const current = await this.prisma.user.findUnique({ where: { id: userId } });
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
     if (!current) {
       return null;
     }
 
+    const changes = {
+      ...(data.fullName !== undefined ? { fullName: data.fullName.trim() } : {}),
+      ...(data.phone !== undefined
+        ? { phone: data.phone === null ? null : data.phone.trim() }
+        : {}),
+      ...(data.city !== undefined
+        ? { city: data.city === null ? null : data.city.trim() }
+        : {}),
+      ...(data.profilePhotoUrl !== undefined
+        ? {
+            photoUrl:
+              data.profilePhotoUrl === null ? null : data.profilePhotoUrl.trim(),
+          }
+        : {}),
+    };
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(data.fullName !== undefined ? { fullName: data.fullName.trim() } : {}),
-        ...(data.phone !== undefined
-          ? { phone: data.phone === null ? null : data.phone.trim() }
-          : {}),
-        ...(data.city !== undefined
-          ? { city: data.city === null ? null : data.city.trim() }
-          : {}),
-        ...(data.profilePhotoUrl !== undefined
-          ? {
-              profilePhotoUrl:
-                data.profilePhotoUrl === null ? null : data.profilePhotoUrl.trim(),
-            }
-          : {}),
+        profile: {
+          upsert: {
+            create: {
+              fullName: changes.fullName ?? current.profile?.fullName ?? '',
+              phone: changes.phone ?? current.profile?.phone ?? null,
+              city: changes.city ?? current.profile?.city ?? null,
+              photoUrl: changes.photoUrl ?? current.profile?.photoUrl ?? null,
+            },
+            update: changes,
+          },
+        },
       },
+      include: userInclude,
     });
     return toDomain(updated);
   }
@@ -129,7 +171,7 @@ export class PrismaUserRepository implements UserRepository {
 
     const updated = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { staffLocation: { include: { restaurant: true } } },
+      include: userInclude,
     });
     if (!updated) {
       return null;
@@ -182,25 +224,26 @@ export class PrismaUserRepository implements UserRepository {
 }
 
 function toDomain(row: UserRow): User {
+  const assignment = row.staffAssignments?.[0]?.location ?? null;
   return new User({
     id: row.id,
     email: row.email,
     passwordHash: row.passwordHash,
-    fullName: row.fullName,
+    fullName: row.profile?.fullName ?? '',
     role: row.role as Role,
     status: row.status as AccountStatus,
     deletionRequestedAt: row.deletionRequestedAt,
     deletionEffectiveAt: row.deletionEffectiveAt,
-    phone: row.phone,
-    city: row.city,
-    profilePhotoUrl: row.profilePhotoUrl,
-    assignedLocation: row.staffLocation
+    phone: row.profile?.phone ?? null,
+    city: row.profile?.city ?? null,
+    profilePhotoUrl: row.profile?.photoUrl ?? null,
+    assignedLocation: assignment
       ? {
-          id: row.staffLocation.id,
-          name: row.staffLocation.name,
-          address: row.staffLocation.address,
-          status: row.staffLocation.status,
-          restaurantName: row.staffLocation.restaurant.businessName,
+          id: assignment.id,
+          name: assignment.name,
+          address: assignment.address,
+          status: assignment.status,
+          restaurantName: assignment.restaurant.businessName,
         }
       : null,
     suspensionReason: row.suspensionReason,

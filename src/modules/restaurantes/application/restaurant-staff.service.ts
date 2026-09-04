@@ -4,7 +4,26 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PASSWORD_HASHER, type PasswordHasher } from '../../auth/domain/services/password-hasher';
 import type { CreateStaffCommand, UpdateStaffCommand } from './dto/restaurant-profile.commands';
 
-const staffInclude = { staffLocation: { select: { id: true, name: true, restaurantId: true } } };
+// La sede asignada vive en `restaurant_staff`: revocar el acceso desactiva el
+// vinculo sin borrarlo, para conservar el historial (GU-05, PARCHE-286).
+const staffInclude = {
+  profile: true,
+  staffAssignments: {
+    where: { isActive: true },
+    include: { location: { select: { id: true, name: true, restaurantId: true } } },
+    orderBy: { hiredAt: 'desc' },
+    take: 1,
+  },
+} as const;
+
+type StaffRow = {
+  id: string;
+  email: string;
+  status: AccountStatus;
+  createdAt: Date;
+  profile: { fullName: string; phone: string | null } | null;
+  staffAssignments: { location: { id: string; name: string; restaurantId: string } }[];
+};
 
 @Injectable()
 export class RestaurantStaffService {
@@ -15,7 +34,14 @@ export class RestaurantStaffService {
 
   async list(ownerId: string) {
     await this.assertApprovedOwner(ownerId);
-    const people = await this.prisma.user.findMany({ where: { role: UserRole.personal_restaurante, staffLocation: { restaurant: { ownerId } } }, include: staffInclude, orderBy: { createdAt: 'desc' } });
+    const people = await this.prisma.user.findMany({
+      where: {
+        role: UserRole.personal_restaurante,
+        staffAssignments: { some: { isActive: true, location: { restaurant: { ownerId } } } },
+      },
+      include: staffInclude,
+      orderBy: { createdAt: 'desc' },
+    });
     return people.map(toStaffMember);
   }
 
@@ -28,7 +54,16 @@ export class RestaurantStaffService {
     if (await this.prisma.user.findUnique({ where: { email }, select: { id: true } })) throw new ConflictException('Ese correo ya está en uso.');
     try {
       const person = await this.prisma.user.create({
-        data: { fullName: dto.fullName.trim(), email, phone: dto.phone?.trim() || null, passwordHash: await this.passwords.hash(dto.initialPassword), role: UserRole.personal_restaurante, status: AccountStatus.activa, staffLocationId: dto.locationId, termsAcceptedAt: new Date(), privacyAcceptedAt: new Date() },
+        data: {
+          email,
+          passwordHash: await this.passwords.hash(dto.initialPassword),
+          role: UserRole.personal_restaurante,
+          status: AccountStatus.activa,
+          termsAcceptedAt: new Date(),
+          privacyAcceptedAt: new Date(),
+          profile: { create: { fullName: dto.fullName.trim(), phone: dto.phone?.trim() || null } },
+          staffAssignments: { create: { locationId: dto.locationId } },
+        },
         include: staffInclude,
       });
       return toStaffMember(person);
@@ -40,13 +75,39 @@ export class RestaurantStaffService {
 
   async update(ownerId: string, staffId: string, dto: UpdateStaffCommand) {
     await this.getOwnedStaff(ownerId, staffId);
-    return toStaffMember(await this.prisma.user.update({ where: { id: staffId }, data: { ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}), ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}) }, include: staffInclude }));
+    return toStaffMember(await this.prisma.user.update({
+      where: { id: staffId },
+      data: {
+        profile: {
+          update: {
+            ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
+            ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
+          },
+        },
+      },
+      include: staffInclude,
+    }));
   }
 
+  /**
+   * Reasignar cierra el vinculo anterior y abre uno nuevo, en una sola
+   * transaccion: el historial de sedes queda completo (PARCHE-286).
+   */
   async reassign(ownerId: string, staffId: string, locationId: string) {
     await this.getOwnedStaff(ownerId, staffId);
     await this.getOwnedLocation(ownerId, locationId);
-    return toStaffMember(await this.prisma.user.update({ where: { id: staffId }, data: { staffLocationId: locationId }, include: staffInclude }));
+    await this.prisma.$transaction([
+      this.prisma.restaurantStaff.updateMany({
+        where: { userId: staffId, isActive: true, NOT: { locationId } },
+        data: { isActive: false, revokedAt: new Date() },
+      }),
+      this.prisma.restaurantStaff.upsert({
+        where: { userId_locationId: { userId: staffId, locationId } },
+        create: { userId: staffId, locationId },
+        update: { isActive: true, revokedAt: null },
+      }),
+    ]);
+    return toStaffMember(await this.getOwnedStaff(ownerId, staffId));
   }
 
   async setEnabled(ownerId: string, staffId: string, enabled: boolean) {
@@ -69,13 +130,33 @@ export class RestaurantStaffService {
 
   private async getOwnedStaff(ownerId: string, staffId: string) {
     await this.assertApprovedOwner(ownerId);
-    const person = await this.prisma.user.findFirst({ where: { id: staffId, role: UserRole.personal_restaurante, staffLocation: { restaurant: { ownerId } } }, include: staffInclude });
+    const person = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        role: UserRole.personal_restaurante,
+        staffAssignments: { some: { isActive: true, location: { restaurant: { ownerId } } } },
+      },
+      include: staffInclude,
+    });
     if (!person) throw new NotFoundException('La cuenta de personal no existe en tu restaurante.');
     return person;
   }
 }
 
-function toStaffMember(person: { id: string; fullName: string; email: string; phone: string | null; status: AccountStatus; createdAt: Date; staffLocation: { id: string; name: string; restaurantId: string } | null }) {
-  if (!person.staffLocation) throw new NotFoundException('La cuenta de personal no tiene una sede asignada.');
-  return { id: person.id, user: { id: person.id, fullName: person.fullName, email: person.email, phone: person.phone, status: person.status, createdAt: person.createdAt }, location: person.staffLocation, createdAt: person.createdAt };
+function toStaffMember(person: StaffRow) {
+  const location = person.staffAssignments[0]?.location;
+  if (!location) throw new NotFoundException('La cuenta de personal no tiene una sede asignada.');
+  return {
+    id: person.id,
+    user: {
+      id: person.id,
+      fullName: person.profile?.fullName ?? '',
+      email: person.email,
+      phone: person.profile?.phone ?? null,
+      status: person.status,
+      createdAt: person.createdAt,
+    },
+    location,
+    createdAt: person.createdAt,
+  };
 }
