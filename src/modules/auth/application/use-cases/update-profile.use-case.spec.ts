@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundError } from '../../../../common/errors/not-found-error';
 import { Role } from '../../../../common/enums/role.enum';
 import { User } from '../../domain/entities/user.entity';
 import { AccountStatus } from '../../domain/enums/account-status.enum';
@@ -32,7 +32,7 @@ describe('UpdateProfileUseCase', () => {
     const users = { findById: jest.fn().mockResolvedValue(null) } as unknown as UserRepository;
     const useCase = new UpdateProfileUseCase(users);
 
-    await expect(useCase.execute('missing', { fullName: 'Nombre', city: 'Bogotá' })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(useCase.execute('missing', { fullName: 'Nombre', city: 'Bogotá' })).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 

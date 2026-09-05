@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,8 +12,11 @@ import {
   Post,
   Req,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
@@ -36,6 +40,8 @@ import { ResetPasswordUseCase } from '../../application/use-cases/reset-password
 import { ForgotPasswordDto } from '../../application/dto/forgot-password.dto';
 import { ResetPasswordDto } from '../../application/dto/reset-password.dto';
 import { RequestAccountDeletionUseCase } from '../../application/use-cases/request-account-deletion.use-case';
+import { UploadProfileImageUseCase } from '../../application/use-cases/upload-profile-image.use-case';
+import { imageUploadOptions } from '../../../../common/http/image-upload.options';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository';
 import type { UserRepository } from '../../domain/repositories/user.repository';
 
@@ -60,6 +66,7 @@ export class AuthController {
     private readonly resetPassword: ResetPasswordUseCase,
     private readonly updateProfile: UpdateProfileUseCase,
     private readonly requestAccountDeletion: RequestAccountDeletionUseCase,
+    private readonly uploadProfileImage: UploadProfileImageUseCase,
     private readonly config: ConfigService,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
   ) {}
@@ -106,7 +113,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
-    const result = await this.refreshSession.execute(token, contextOf(req));
+    const result = await this.refreshSession.execute(token);
     return this.respondWithSession(res, result);
   }
 
@@ -128,13 +135,11 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.ACCEPTED)
-  async forgotPassword(
-    @Body() dto: ForgotPasswordDto,
-    @Req() req: Request,
-  ) {
-    await this.requestPasswordReset.execute(dto.email, contextOf(req));
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.requestPasswordReset.execute(dto.email);
     return {
-      message: 'Si el correo está registrado, recibirás un enlace de recuperación.',
+      message:
+        'Si el correo está registrado, recibirás un enlace de recuperación.',
     };
   }
 
@@ -163,6 +168,19 @@ export class AuthController {
   ) {
     const user = await this.updateProfile.execute(current.id, dto);
     return { user };
+  }
+
+  /** Sube la imagen a Storage y persiste solamente la URL generada. */
+  @Post('me/photo')
+  @UseInterceptors(FileInterceptor('file', imageUploadOptions))
+  async uploadMyPhoto(
+    @CurrentUser() current: AuthenticatedUser,
+    @UploadedFile() file: UploadedProfileImageFile,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Debes adjuntar un archivo en el campo "file".');
+    }
+    return { user: await this.uploadProfileImage.execute(current.id, file) };
   }
 
   @Delete('me')
@@ -198,6 +216,12 @@ export class AuthController {
       maxAge,
     };
   }
+}
+
+interface UploadedProfileImageFile {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
 }
 
 function contextOf(req: Request): RequestContext {

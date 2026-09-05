@@ -48,14 +48,14 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
-  @IsProfilePhoto()
+  @IsProfilePhotoReference()
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
   profilePhotoUrl?: string | null;
 }
 
-function IsProfilePhoto(validationOptions?: ValidationOptions) {
+function IsProfilePhotoReference(validationOptions?: ValidationOptions) {
   return (object: object, propertyName: string) => {
     registerDecorator({
       name: 'isProfilePhoto',
@@ -66,11 +66,10 @@ function IsProfilePhoto(validationOptions?: ValidationOptions) {
         validate(value: unknown) {
           if (value === null) return true;
           if (typeof value !== 'string') return false;
-          const match = /^data:image\/(jpeg|png);base64,(.+)$/.exec(value);
-          return !!match && Buffer.from(match[2], 'base64').byteLength <= 5 * 1024 * 1024;
+          return value === null || (typeof value === 'string' && value.length <= 2048 && !/^\s*data:/i.test(value));
         },
         defaultMessage(_args: ValidationArguments) {
-          return 'La foto debe ser JPG o PNG y no superar 5 MB.';
+          return 'La foto debe ser una URL o referencia de Storage válida.';
         },
       },
     });

@@ -4,8 +4,9 @@ import { User } from '../entities/user.entity';
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 
 export interface CreateUserData {
+  /** Id de la cuenta en Supabase Auth: public.users.id debe coincidir. */
+  id: string;
   email: string;
-  passwordHash: string;
   fullName: string;
   phone: string;
   city: string;

@@ -1,9 +1,6 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConflictError } from '../../../../common/errors/conflict-error';
+import { NotFoundError } from '../../../../common/errors/not-found-error';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository';
 import type { UserRepository } from '../../domain/repositories/user.repository';
 
@@ -21,15 +18,18 @@ export class RequestAccountDeletionUseCase {
   }> {
     const existingUser = await this.users.findById(userId);
     if (!existingUser) {
-      throw new NotFoundException('No se encontró el usuario autenticado.');
+      throw new NotFoundError(
+        'No se encontró el usuario autenticado.',
+        'USER_NOT_FOUND',
+      );
     }
 
     if (existingUser.isDeletionPending() || existingUser.deletionRequestedAt) {
-      throw new ConflictException({
-        code: 'ELIMINACION_YA_SOLICITADA',
-        message: 'La cuenta ya tiene una solicitud de eliminación pendiente.',
-        deletionEffectiveAt: existingUser.deletionEffectiveAt,
-      });
+      throw new ConflictError(
+        'La cuenta ya tiene una solicitud de eliminación pendiente.',
+        'ELIMINACION_YA_SOLICITADA',
+        { deletionEffectiveAt: existingUser.deletionEffectiveAt },
+      );
     }
 
     const deletionRequestedAt = new Date();
@@ -46,13 +46,16 @@ export class RequestAccountDeletionUseCase {
     if (!updatedUser) {
       const currentUser = await this.users.findById(userId);
       if (currentUser?.isDeletionPending() || currentUser?.deletionRequestedAt) {
-        throw new ConflictException({
-          code: 'ELIMINACION_YA_SOLICITADA',
-          message: 'La cuenta ya tiene una solicitud de eliminación pendiente.',
-          deletionEffectiveAt: currentUser.deletionEffectiveAt,
-        });
+        throw new ConflictError(
+          'La cuenta ya tiene una solicitud de eliminación pendiente.',
+          'ELIMINACION_YA_SOLICITADA',
+          { deletionEffectiveAt: currentUser.deletionEffectiveAt },
+        );
       }
-      throw new NotFoundException('No se pudo solicitar la eliminación de la cuenta.');
+      throw new NotFoundError(
+        'No se pudo solicitar la eliminación de la cuenta.',
+        'USER_NOT_FOUND',
+      );
     }
 
     return {

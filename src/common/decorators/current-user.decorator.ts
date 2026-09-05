@@ -9,7 +9,7 @@ export interface AuthenticatedUser {
   status: string;
 }
 
-/** Inyecta el usuario que el JwtAuthGuard puso en la peticion. */
+/** Inyecta el usuario que el SupabaseJwtGuard puso en la peticion. */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthenticatedUser => {
     const request = ctx

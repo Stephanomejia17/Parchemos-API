@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { NotFoundError } from '../../../../common/errors/not-found-error';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository';
 import type { UserRepository } from '../../domain/repositories/user.repository';
 import { PublicUser } from '../dto/auth-response.dto';
@@ -14,7 +15,10 @@ export class UpdateProfileUseCase {
   async execute(userId: string, dto: UpdateProfileDto): Promise<PublicUser> {
     const existingUser = await this.users.findById(userId);
     if (!existingUser) {
-      throw new NotFoundException('No se encontró el usuario autenticado.');
+      throw new NotFoundError(
+        'No se encontró el usuario autenticado.',
+        'USER_NOT_FOUND',
+      );
     }
 
     const updatedUser = await this.users.updateProfile(userId, {
@@ -25,7 +29,10 @@ export class UpdateProfileUseCase {
     });
 
     if (!updatedUser) {
-      throw new NotFoundException('No se pudo actualizar el perfil del usuario.');
+      throw new NotFoundError(
+        'No se pudo actualizar el perfil del usuario.',
+        'USER_NOT_FOUND',
+      );
     }
 
     return toPublicUser(updatedUser);

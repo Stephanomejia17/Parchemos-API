@@ -25,7 +25,8 @@ export interface PublicUser {
 export interface AuthResult {
   user: PublicUser;
   accessToken: string;
-  expiresIn: string;
+  /** Segundos de vigencia del access token (lo informa Supabase). */
+  expiresIn: number;
   /** No se serializa al cliente: viaja en una cookie httpOnly. */
   refreshToken: string;
   refreshTokenMaxAgeMs: number;

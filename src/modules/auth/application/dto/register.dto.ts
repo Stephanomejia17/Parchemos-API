@@ -63,7 +63,7 @@ export class RegisterDto {
   // desde "Mi perfil". Se sigue aceptando por si un cliente antiguo la manda.
   @IsOptional()
   @IsString()
-  @IsProfilePhoto()
+  @IsProfilePhotoReference()
   profilePhotoUrl?: string;
 
   // GU-01 Esc. 5: el rol es obligatorio y solo puede ser comensal o restaurante.
@@ -84,7 +84,7 @@ export class RegisterDto {
   acceptedPrivacy!: boolean;
 }
 
-function IsProfilePhoto(validationOptions?: ValidationOptions) {
+function IsProfilePhotoReference(validationOptions?: ValidationOptions) {
   return (object: object, propertyName: string) => {
     registerDecorator({
       name: 'isProfilePhoto',
@@ -93,17 +93,10 @@ function IsProfilePhoto(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: unknown) {
-          if (typeof value !== 'string') return false;
-          const match = /^data:image\/(jpeg|png);base64,(.+)$/.exec(value);
-          if (!match) return false;
-          try {
-            return Buffer.from(match[2], 'base64').byteLength <= 5 * 1024 * 1024;
-          } catch {
-            return false;
-          }
+          return typeof value === 'string' && value.length <= 2048 && !/^\s*data:/i.test(value);
         },
         defaultMessage(_args: ValidationArguments) {
-          return 'La foto debe ser JPG o PNG y no superar 5 MB.';
+          return 'La foto debe ser una URL o referencia de Storage válida.';
         },
       },
     });

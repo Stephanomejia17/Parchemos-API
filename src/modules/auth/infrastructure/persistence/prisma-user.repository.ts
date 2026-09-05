@@ -27,7 +27,7 @@ const userInclude = {
 type UserRow = {
   id: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
   deletionRequestedAt: Date | null;
   deletionEffectiveAt: Date | null;
   role: string;
@@ -79,14 +79,12 @@ export class PrismaUserRepository implements UserRepository {
   async create(data: CreateUserData): Promise<User> {
     const row = await this.prisma.user.create({
       data: {
+        // Coincide con el id de la cuenta en Supabase Auth.
+        id: data.id,
         email: data.email,
-        passwordHash: data.passwordHash,
+        passwordHash: null,
         role: data.role,
-        // GU-01 Esc. 2: el restaurante nace pendiente de aprobacion.
-        status:
-          data.role === Role.RESTAURANTE
-            ? AccountStatus.PENDIENTE_APROBACION
-            : AccountStatus.ACTIVA,
+        status: AccountStatus.ACTIVA,
         termsAcceptedAt: data.acceptedAt,
         privacyAcceptedAt: data.acceptedAt,
         termsVersion: data.termsVersion,

@@ -1,4 +1,5 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictError } from '../../../../common/errors/conflict-error';
+import { NotFoundError } from '../../../../common/errors/not-found-error';
 import { Role } from '../../../../common/enums/role.enum';
 import { User } from '../../domain/entities/user.entity';
 import { AccountStatus } from '../../domain/enums/account-status.enum';
@@ -50,7 +51,7 @@ describe('RequestAccountDeletionUseCase', () => {
     users.findById.mockResolvedValue(null);
 
     await expect(useCase.execute('missing-user')).rejects.toBeInstanceOf(
-      NotFoundException,
+      NotFoundError,
     );
     expect(users.requestAccountDeletion).not.toHaveBeenCalled();
   });
@@ -65,7 +66,7 @@ describe('RequestAccountDeletionUseCase', () => {
     );
 
     await expect(useCase.execute('user-1')).rejects.toBeInstanceOf(
-      ConflictException,
+      ConflictError,
     );
     expect(users.requestAccountDeletion).not.toHaveBeenCalled();
   });

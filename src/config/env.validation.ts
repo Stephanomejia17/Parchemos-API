@@ -47,26 +47,16 @@ function requireInt(
 
 export interface AppEnv {
   DATABASE_URL: string;
-  JWT_ACCESS_SECRET: string;
-  REFRESH_TOKEN_PEPPER: string;
-  PASSWORD_RESET_TOKEN_PEPPER: string;
-  BREVO_API_KEY: string;
-  BREVO_SENDER_EMAIL: string;
-  BREVO_SENDER_NAME: string;
+  /** Ruta del frontend a la que Supabase redirige tras el enlace de recuperacion. */
   PASSWORD_RESET_URL: string;
-  PASSWORD_RESET_TTL: string;
-  JWT_ACCESS_TTL: string;
+  /** Cuanto tiempo sigue el navegador enviando la cookie del refresh token. */
   JWT_REFRESH_TTL: string;
-  JWT_ISSUER: string;
-  JWT_AUDIENCE: string;
   LOGIN_MAX_ATTEMPTS: number;
   LOGIN_LOCK_MINUTES: number;
-  PASSWORD_HASH_MEMORY_KIB: number;
-  PASSWORD_HASH_ITERATIONS: number;
-  PASSWORD_HASH_PARALLELISM: number;
   PORT: number;
   CORS_ORIGINS: string[];
   SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   SUPABASE_STORAGE_BUCKET: string;
 }
@@ -76,49 +66,23 @@ export function validateEnv(
 ): AppEnv & Record<string, unknown> {
   const validated: AppEnv = {
     DATABASE_URL: requireString(config, 'DATABASE_URL'),
-    JWT_ACCESS_SECRET: requireSecret(config, 'JWT_ACCESS_SECRET'),
-    REFRESH_TOKEN_PEPPER: requireSecret(config, 'REFRESH_TOKEN_PEPPER'),
-    PASSWORD_RESET_TOKEN_PEPPER: requireSecret(
-      config,
-      'PASSWORD_RESET_TOKEN_PEPPER',
-    ),
-    BREVO_API_KEY: requireString(config, 'BREVO_API_KEY'),
-    BREVO_SENDER_EMAIL: requireString(config, 'BREVO_SENDER_EMAIL'),
-    BREVO_SENDER_NAME: (config.BREVO_SENDER_NAME as string) ?? 'Parchemos',
     PASSWORD_RESET_URL: requireString(config, 'PASSWORD_RESET_URL'),
-    PASSWORD_RESET_TTL: (config.PASSWORD_RESET_TTL as string) ?? '30m',
-    JWT_ACCESS_TTL: (config.JWT_ACCESS_TTL as string) ?? '15m',
     JWT_REFRESH_TTL: (config.JWT_REFRESH_TTL as string) ?? '30d',
-    JWT_ISSUER: (config.JWT_ISSUER as string) ?? 'parchemos-api',
-    JWT_AUDIENCE: (config.JWT_AUDIENCE as string) ?? 'parchemos-app',
     LOGIN_MAX_ATTEMPTS: requireInt(config, 'LOGIN_MAX_ATTEMPTS', 5),
     LOGIN_LOCK_MINUTES: requireInt(config, 'LOGIN_LOCK_MINUTES', 15),
-    PASSWORD_HASH_MEMORY_KIB: requireInt(
-      config,
-      'PASSWORD_HASH_MEMORY_KIB',
-      65536,
-    ),
-    PASSWORD_HASH_ITERATIONS: requireInt(config, 'PASSWORD_HASH_ITERATIONS', 3),
-    PASSWORD_HASH_PARALLELISM: requireInt(
-      config,
-      'PASSWORD_HASH_PARALLELISM',
-      4,
-    ),
     PORT: requireInt(config, 'PORT', 3001),
     CORS_ORIGINS: ((config.CORS_ORIGINS as string) ?? 'http://localhost:3000')
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),
     SUPABASE_URL: requireString(config, 'SUPABASE_URL'),
-    SUPABASE_SERVICE_ROLE_KEY: requireSecret(config, 'SUPABASE_SERVICE_ROLE_KEY'),
+    SUPABASE_ANON_KEY: requireString(config, 'SUPABASE_ANON_KEY'),
+    SUPABASE_SERVICE_ROLE_KEY: requireSecret(
+      config,
+      'SUPABASE_SERVICE_ROLE_KEY',
+    ),
     SUPABASE_STORAGE_BUCKET: requireString(config, 'SUPABASE_STORAGE_BUCKET'),
   };
-
-  if (validated.JWT_ACCESS_SECRET === validated.REFRESH_TOKEN_PEPPER) {
-    throw new Error(
-      'JWT_ACCESS_SECRET y REFRESH_TOKEN_PEPPER deben ser distintos.',
-    );
-  }
 
   return { ...config, ...validated };
 }

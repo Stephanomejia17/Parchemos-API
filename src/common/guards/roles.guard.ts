@@ -20,7 +20,7 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    // El usuario lo pone el JwtAuthGuard, que corre antes que este guard.
+    // El usuario lo pone el SupabaseJwtGuard, que corre antes que este guard.
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthenticatedUser }>();

@@ -1,55 +1,44 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { SESSION_REPOSITORY } from '../../domain/repositories/session.repository';
-import type { SessionRepository } from '../../domain/repositories/session.repository';
+import { Inject, Injectable } from '@nestjs/common';
+import { UnauthorizedError } from '../../../../common/errors/unauthorized-error';
+import { SupabaseAuthService } from '../../../../infrastructure/auth/supabase-auth.service';
 import { USER_REPOSITORY } from '../../domain/repositories/user.repository';
 import type { UserRepository } from '../../domain/repositories/user.repository';
-import { TokenService } from '../../infrastructure/security/token.service';
 import { AuthResult } from '../dto/auth-response.dto';
-import { LoginUseCase, RequestContext } from './login.use-case';
+import { LoginUseCase } from './login.use-case';
 
-/**
- * Renueva el access token a partir del refresh token.
- *
- * Aplica rotacion: cada uso revoca el token anterior y entrega uno nuevo, de
- * modo que un token robado deja de servir en cuanto el dueno legitimo refresca.
- */
+/** Renueva el access token a partir del refresh token que emitio Supabase. */
 @Injectable()
 export class RefreshSessionUseCase {
   constructor(
-    @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
-    private readonly tokens: TokenService,
+    private readonly supabaseAuth: SupabaseAuthService,
     private readonly login: LoginUseCase,
   ) {}
 
-  async execute(
-    refreshToken: string | undefined,
-    ctx: RequestContext,
-  ): Promise<AuthResult> {
+  async execute(refreshToken: string | undefined): Promise<AuthResult> {
     if (!refreshToken) {
-      throw new UnauthorizedException('Sesión no válida.');
+      throw new UnauthorizedError('Sesión no válida.', 'INVALID_SESSION');
     }
 
-    const hash = this.tokens.hashRefreshToken(refreshToken);
-    const session = await this.sessions.findActiveByTokenHash(hash);
+    // GU-02 Esc. 6: token revocado, expirado o inexistente.
+    const session = await this.supabaseAuth.refreshSession(refreshToken);
     if (!session) {
-      // GU-02 Esc. 6: token revocado, expirado o inexistente.
-      throw new UnauthorizedException('Sesión no válida.');
+      throw new UnauthorizedError('Sesión no válida.', 'INVALID_SESSION');
     }
 
     const user = await this.users.findById(session.userId);
     if (!user) {
-      await this.sessions.revokeByTokenHash(hash, 'revocada_por_admin');
-      throw new UnauthorizedException('Sesión no válida.');
+      throw new UnauthorizedError('Sesión no válida.', 'INVALID_SESSION');
     }
 
     // Si la cuenta cambio de estado despues de iniciar sesion, la sesion muere.
     if (user.isSuspended() || user.isDisabled()) {
-      await this.sessions.revokeAllForUser(user.id, 'cuenta_suspendida');
-      throw new UnauthorizedException('Sesión no válida.');
+      await this.supabaseAuth
+        .signOut(session.accessToken)
+        .catch(() => undefined);
+      throw new UnauthorizedError('Sesión no válida.', 'INVALID_SESSION');
     }
 
-    await this.sessions.revokeByTokenHash(hash, 'rotacion');
-    return this.login.issueSession(user, ctx);
+    return this.login.issueSession(user, session);
   }
 }

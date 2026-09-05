@@ -9,13 +9,14 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
+import { SupabaseAuthModule } from './infrastructure/auth/supabase-auth.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { JwtAuthGuard } from './modules/auth/infrastructure/guards/jwt-auth.guard';
+import { SupabaseJwtGuard } from './modules/auth/infrastructure/guards/supabase-jwt.guard';
 import { PedidosModule } from './modules/pedidos/pedidos.module';
 import { ResenasModule } from './modules/resenas/resenas.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
-import { RestaurantesModule } from './modules/restaurantes/restaurantes.module';
-import { ProductosModule } from './modules/productos/productos.module';
+import { RestaurantsModule } from './modules/restaurants/restaurants.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
   imports: [
@@ -29,9 +30,10 @@ import { ProductosModule } from './modules/productos/productos.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
     StorageModule,
+    SupabaseAuthModule,
     AuthModule,
-    RestaurantesModule,
-    ProductosModule,
+    RestaurantsModule,
+    ProductsModule,
     PedidosModule,
     ReservasModule,
     ResenasModule,
@@ -42,7 +44,7 @@ import { ProductosModule } from './modules/productos/productos.module';
     // El orden importa: primero se limita el trafico, luego se exige token y
     // por ultimo se comprueba el rol.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useExisting: SupabaseJwtGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],

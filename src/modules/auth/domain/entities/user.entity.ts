@@ -5,7 +5,7 @@ import { AccountStatus } from '../enums/account-status.enum';
 export interface UserProps {
   id: string;
   email: string;
-  passwordHash: string;
+  passwordHash: string | null;
   fullName: string;
   role: Role;
   status: AccountStatus;
@@ -37,7 +37,7 @@ export interface AssignedLocation {
  */
 export class User extends BaseEntity {
   readonly email: string;
-  readonly passwordHash: string;
+  readonly passwordHash: string | null;
   readonly fullName: string;
   readonly role: Role;
   readonly status: AccountStatus;
@@ -100,5 +100,10 @@ export class User extends BaseEntity {
 
   canOperate(): boolean {
     return this.status === AccountStatus.ACTIVA;
+  }
+
+  /** Falso para las cuentas creadas via Supabase Auth: el password vive alla. */
+  hasLocalPassword(): boolean {
+    return this.passwordHash !== null;
   }
 }
