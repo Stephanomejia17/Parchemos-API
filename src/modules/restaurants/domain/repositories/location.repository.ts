@@ -27,10 +27,21 @@ export interface UpdateLocationData {
 }
 
 export interface LocationOwnerInfo {
-  location: Location;
-  ownerId: string;
-  ownerEmail: string;
-  ownerFullName: string;
+  id: string;
+  name: string;
+  address: string;
+  status: LocationStatus;
+  rejectionReason: string | null;
+  approvedAt: Date | null;
+  restaurant: {
+    id: string;
+    businessName: string;
+    owner: {
+      id: string;
+      fullName: string;
+      email: string;
+    };
+  };
 }
 
 export interface LocationRepository {

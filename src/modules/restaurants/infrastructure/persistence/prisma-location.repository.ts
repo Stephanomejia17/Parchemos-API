@@ -147,6 +147,8 @@ export class PrismaLocationRepository implements LocationRepository {
 function toOwnerInfo(
   row: LocationRow & {
     restaurant: {
+      id: string;
+      businessName: string;
       owner: {
         id: string;
         email: string;
@@ -155,10 +157,23 @@ function toOwnerInfo(
     };
   },
 ): LocationOwnerInfo {
+  const location = toLocationDomain(row);
+
   return {
-    location: toLocationDomain(row),
-    ownerId: row.restaurant.owner.id,
-    ownerEmail: row.restaurant.owner.email,
-    ownerFullName: row.restaurant.owner.profile?.fullName ?? '',
+    id: location.id,
+    name: location.name,
+    address: location.address,
+    status: location.status,
+    rejectionReason: location.rejectionReason,
+    approvedAt: location.approvedAt,
+    restaurant: {
+      id: row.restaurant.id,
+      businessName: row.restaurant.businessName,
+      owner: {
+        id: row.restaurant.owner.id,
+        email: row.restaurant.owner.email,
+        fullName: row.restaurant.owner.profile?.fullName ?? '',
+      },
+    },
   };
 }

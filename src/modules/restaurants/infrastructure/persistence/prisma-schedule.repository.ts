@@ -16,7 +16,14 @@ export class PrismaScheduleRepository implements ScheduleRepository {
       await tx.locationSchedule.deleteMany({ where: { locationId } });
       if (schedules.length) {
         await tx.locationSchedule.createMany({
-          data: schedules.map((item) => ({ ...item, locationId })),
+          data: schedules.map((item) => ({
+            locationId,
+            dayOfWeek: item.dayOfWeek,
+            // Prisma representa PostgreSQL TIME como DateTime. Usamos una
+            // fecha fija en UTC para conservar únicamente la hora enviada.
+            startsAt: timeToDate(item.startsAt),
+            endsAt: timeToDate(item.endsAt),
+          })),
         });
       }
       const rows = await tx.locationSchedule.findMany({
@@ -30,4 +37,9 @@ export class PrismaScheduleRepository implements ScheduleRepository {
       }));
     });
   }
+}
+
+function timeToDate(value: string): Date {
+  const [hours, minutes] = value.split(':').map(Number);
+  return new Date(Date.UTC(1970, 0, 1, hours, minutes, 0, 0));
 }
