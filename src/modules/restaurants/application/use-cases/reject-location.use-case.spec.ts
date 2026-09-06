@@ -38,4 +38,20 @@ describe('RejectLocationUseCase', () => {
     );
     expect(locations.update).not.toHaveBeenCalled();
   });
+
+  it.each([LocationStatus.ACTIVE, LocationStatus.REJECTED])(
+    'rechaza una sede que no esta pendiente: %s',
+    async (status) => {
+      const locations = {
+        findById: jest.fn().mockResolvedValue(makeLocation({ status })),
+        update: jest.fn(),
+      } as unknown as LocationRepository;
+      const useCase = new RejectLocationUseCase(locations);
+
+      await expect(useCase.execute('loc-1', 'Motivo vÃ¡lido')).rejects.toThrow(
+        'Solo puedes rechazar una sede pendiente.',
+      );
+      expect(locations.update).not.toHaveBeenCalled();
+    },
+  );
 });

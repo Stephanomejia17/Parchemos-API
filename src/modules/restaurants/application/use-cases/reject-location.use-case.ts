@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { NotFoundError } from '../../../../common/errors/not-found-error';
+import { ValidationError } from '../../../../common/errors/validation-error';
 import { Location } from '../../domain/entities/location.entity';
 import { LocationStatus } from '../../domain/enums/location-status.enum';
 import { LOCATION_REPOSITORY } from '../../domain/repositories/location.repository';
@@ -15,6 +16,12 @@ export class RejectLocationUseCase {
     const existing = await this.locations.findById(locationId);
     if (!existing) {
       throw new NotFoundError('La sede no existe.', 'LOCATION_NOT_FOUND');
+    }
+    if (existing.status !== LocationStatus.PENDING_APPROVAL) {
+      throw new ValidationError(
+        'Solo puedes rechazar una sede pendiente.',
+        'LOCATION_NOT_PENDING',
+      );
     }
     return this.locations.update(locationId, {
       status: LocationStatus.REJECTED,
