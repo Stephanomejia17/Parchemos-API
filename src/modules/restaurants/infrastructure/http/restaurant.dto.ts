@@ -14,6 +14,7 @@ import {
   Matches,
   MaxLength,
   Min,
+  Max,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -52,6 +53,28 @@ export class CreateLocationDto {
   @IsOptional()
   @IsLongitude()
   longitude?: number;
+}
+
+export class CreateLocationReviewDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating!: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(10, 500, {
+    message: 'El comentario debe tener entre 10 y 500 caracteres.',
+  })
+  comment?: string;
+}
+
+export class UpdateLocationReviewDto {
+  @IsString()
+  @Length(10, 500, {
+    message: 'El comentario debe tener entre 10 y 500 caracteres.',
+  })
+  comment!: string;
 }
 
 export class UpdateLocationDto {
