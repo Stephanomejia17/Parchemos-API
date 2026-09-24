@@ -1,23 +1,21 @@
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
-import type { PedidoRepository } from '../../domain/repositories/pedido.repository';
 import { ConfirmarPedidoUseCase } from './confirmar-pedido.use-case';
-import { makePedido } from './pedido.test-helpers';
+import {
+  makePedido,
+  mockPedidoRepository,
+  PedidoRepositoryMocks,
+} from './pedido.test-helpers';
 
-function setup(
-  overrides: Partial<Record<keyof PedidoRepository, jest.Mock>> = {},
-) {
-  const mocks = {
+function setup(overrides: Partial<PedidoRepositoryMocks> = {}) {
+  const { mocks, repo } = mockPedidoRepository({
     findById: jest
       .fn()
       .mockResolvedValue(
         makePedido({ estado: PedidoEstado.BORRADOR, confirmadoEn: null }),
       ),
-    contarItems: jest.fn().mockResolvedValue(2),
-    guardarCambioDeEstado: jest.fn().mockResolvedValue(true),
     ...overrides,
-  };
-  const useCase = new ConfirmarPedidoUseCase(mocks);
-  return { mocks, useCase };
+  });
+  return { mocks, useCase: new ConfirmarPedidoUseCase(repo) };
 }
 
 describe('ConfirmarPedidoUseCase', () => {

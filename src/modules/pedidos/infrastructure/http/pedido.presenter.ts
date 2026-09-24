@@ -8,6 +8,7 @@ export function toPedidoEstadoResponse(pedido: Pedido) {
     numero: pedido.numero,
     restauranteId: pedido.restauranteId,
     sedeId: pedido.sedeId,
+    sedeNombre: pedido.sedeNombre,
     modalidad: pedido.modalidad,
     estado: pedido.estado,
     siguientesEstados: siguientesEstados(pedido.estado, pedido.modalidad),

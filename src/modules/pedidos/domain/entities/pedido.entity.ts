@@ -20,6 +20,8 @@ export interface PedidoProps {
   numero: number;
   restauranteId: string;
   sedeId: string;
+  /** Nombre de la sede, para mostrarlo al comensal. */
+  sedeNombre?: string;
   comensalId: string | null;
   modalidad: PedidoModalidad;
   estado: PedidoEstado;
@@ -35,6 +37,7 @@ export class Pedido extends BaseEntity {
   readonly numero: number;
   readonly restauranteId: string;
   readonly sedeId: string;
+  readonly sedeNombre: string;
   readonly comensalId: string | null;
   readonly modalidad: PedidoModalidad;
   estado: PedidoEstado;
@@ -48,6 +51,7 @@ export class Pedido extends BaseEntity {
     this.numero = props.numero;
     this.restauranteId = props.restauranteId;
     this.sedeId = props.sedeId;
+    this.sedeNombre = props.sedeNombre ?? '';
     this.comensalId = props.comensalId;
     this.modalidad = props.modalidad;
     this.estado = props.estado;

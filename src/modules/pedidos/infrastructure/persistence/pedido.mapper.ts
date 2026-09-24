@@ -11,6 +11,7 @@ export interface PedidoPersistenceRow {
   orderNumber: bigint;
   restaurantId: string;
   locationId: string;
+  location: { name: string };
   dinerId: string | null;
   fulfillment: OrderFulfillment;
   status: OrderStatus;
@@ -26,6 +27,7 @@ export const PEDIDO_SELECT = {
   orderNumber: true,
   restaurantId: true,
   locationId: true,
+  location: { select: { name: true } },
   dinerId: true,
   fulfillment: true,
   status: true,
@@ -42,6 +44,7 @@ export function toPedidoDomain(row: PedidoPersistenceRow): Pedido {
     numero: Number(row.orderNumber),
     restauranteId: row.restaurantId,
     sedeId: row.locationId,
+    sedeNombre: row.location.name,
     comensalId: row.dinerId,
     modalidad: row.fulfillment as PedidoModalidad,
     estado: row.status as PedidoEstado,

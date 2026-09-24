@@ -19,8 +19,40 @@ export class PrismaPedidoRepository implements PedidoRepository {
     return row ? toPedidoDomain(row) : null;
   }
 
+  async findConfirmadosDeComensal(comensalId: string): Promise<Pedido[]> {
+    const rows = await this.prisma.order.findMany({
+      where: { dinerId: comensalId, status: { not: 'borrador' } },
+      orderBy: { placedAt: 'desc' },
+      take: 50,
+      select: PEDIDO_SELECT,
+    });
+    return rows.map(toPedidoDomain);
+  }
+
   contarItems(pedidoId: string): Promise<number> {
     return this.prisma.orderItem.count({ where: { orderId: pedidoId } });
+  }
+
+  async esDuenoDelRestaurante(
+    restauranteId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const row = await this.prisma.restaurant.findFirst({
+      where: { id: restauranteId, ownerId: userId },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  async esPersonalActivoDeSede(
+    sedeId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const row = await this.prisma.restaurantStaff.findFirst({
+      where: { locationId: sedeId, userId, isActive: true, revokedAt: null },
+      select: { id: true },
+    });
+    return row !== null;
   }
 
   async guardarCambioDeEstado({

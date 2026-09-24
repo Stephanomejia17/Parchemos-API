@@ -11,7 +11,14 @@ export interface CambioEstadoPedido {
 
 export interface PedidoRepository {
   findById(id: string): Promise<Pedido | null>;
+  /** Pedidos ya confirmados del comensal, del mas reciente al mas antiguo. */
+  findConfirmadosDeComensal(comensalId: string): Promise<Pedido[]>;
   contarItems(pedidoId: string): Promise<number>;
+  esDuenoDelRestaurante(
+    restauranteId: string,
+    userId: string,
+  ): Promise<boolean>;
+  esPersonalActivoDeSede(sedeId: string, userId: string): Promise<boolean>;
   /**
    * Persiste el nuevo estado solo si el pedido sigue en `estadoAnterior`.
    * Devuelve false si otro cambio se adelanto (escritura concurrente).
