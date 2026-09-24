@@ -66,6 +66,7 @@ export class PrismaPedidoRepository implements PedidoRepository {
       data: {
         status: pedido.estado,
         placedAt: pedido.confirmadoEn,
+        deliveredAt: pedido.entregadoEn,
         updatedAt: pedido.updatedAt,
       },
     });

@@ -4,6 +4,7 @@ import { PedidoModalidad } from '../enums/pedido-modalidad.enum';
 import { TransicionEstadoInvalidaError } from '../errors/transicion-estado-invalida.error';
 import {
   ESTADO_INICIAL_PEDIDO,
+  ESTADOS_FINALES,
   esTransicionValida,
 } from '../services/pedido-estado-flujo';
 
@@ -85,5 +86,13 @@ export class Pedido extends BaseEntity {
     }
     this.estado = destino;
     this.updatedAt = fecha;
+    // GP-08 CA4: constancia de cuando termino el proceso.
+    if (destino === PedidoEstado.ENTREGADO) {
+      this.entregadoEn = fecha;
+    }
+  }
+
+  estaFinalizado(): boolean {
+    return ESTADOS_FINALES.includes(this.estado);
   }
 }

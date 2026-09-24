@@ -76,4 +76,49 @@ describe('CambiarEstadoPedidoUseCase', () => {
       useCase.execute('pedido-1', personal, { estado: PedidoEstado.LISTO }),
     ).rejects.toThrow('Otro usuario actualizó este pedido.');
   });
+
+  it('al entregar un pedido listo registra la fecha de finalización', async () => {
+    const { useCase } = setup({
+      findById: jest
+        .fn()
+        .mockResolvedValue(makePedido({ estado: PedidoEstado.LISTO })),
+    });
+
+    const pedido = await useCase.execute('pedido-1', personal, {
+      estado: PedidoEstado.ENTREGADO,
+    });
+
+    expect(pedido.estado).toBe(PedidoEstado.ENTREGADO);
+    expect(pedido.entregadoEn).toBeInstanceOf(Date);
+    expect(pedido.estaFinalizado()).toBe(true);
+  });
+
+  it('no permite entregar un pedido que aún no está listo', async () => {
+    const { useCase } = setup({
+      findById: jest
+        .fn()
+        .mockResolvedValue(makePedido({ estado: PedidoEstado.EN_PREPARACION })),
+    });
+
+    await expect(
+      useCase.execute('pedido-1', personal, { estado: PedidoEstado.ENTREGADO }),
+    ).rejects.toThrow(
+      'El pedido no puede pasar de "en_preparacion" a "entregado".',
+    );
+  });
+
+  it('un pedido entregado ya no admite cambios', async () => {
+    const { useCase } = setup({
+      findById: jest.fn().mockResolvedValue(
+        makePedido({
+          estado: PedidoEstado.ENTREGADO,
+          entregadoEn: new Date('2026-09-23T13:00:00Z'),
+        }),
+      ),
+    });
+
+    await expect(
+      useCase.execute('pedido-1', personal, { estado: PedidoEstado.LISTO }),
+    ).rejects.toThrow('El pedido no puede pasar de "entregado" a "listo".');
+  });
 });

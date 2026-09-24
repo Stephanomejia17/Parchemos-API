@@ -12,6 +12,7 @@ export function toPedidoEstadoResponse(pedido: Pedido) {
     modalidad: pedido.modalidad,
     estado: pedido.estado,
     siguientesEstados: siguientesEstados(pedido.estado, pedido.modalidad),
+    finalizado: pedido.estaFinalizado(),
     total: pedido.total,
     confirmadoEn: pedido.confirmadoEn,
     entregadoEn: pedido.entregadoEn,

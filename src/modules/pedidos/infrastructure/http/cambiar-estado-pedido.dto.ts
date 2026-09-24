@@ -7,6 +7,7 @@ export const ESTADOS_GESTIONABLES = [
   PedidoEstado.EN_PREPARACION,
   PedidoEstado.LISTO,
   PedidoEstado.EN_CAMINO,
+  PedidoEstado.ENTREGADO,
 ] as const;
 
 export class CambiarEstadoPedidoDto {
