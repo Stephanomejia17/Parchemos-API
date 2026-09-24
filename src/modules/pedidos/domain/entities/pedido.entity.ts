@@ -1,5 +1,11 @@
 import { BaseEntity } from '../../../../common/domain/base.entity';
 import { PedidoEstado } from '../enums/pedido-estado.enum';
+import { PedidoModalidad } from '../enums/pedido-modalidad.enum';
+import { TransicionEstadoInvalidaError } from '../errors/transicion-estado-invalida.error';
+import {
+  ESTADO_INICIAL_PEDIDO,
+  esTransicionValida,
+} from '../services/pedido-estado-flujo';
 
 export class PedidoItem {
   constructor(
@@ -9,24 +15,71 @@ export class PedidoItem {
   ) {}
 }
 
+export interface PedidoProps {
+  id: string;
+  numero: number;
+  restauranteId: string;
+  sedeId: string;
+  comensalId: string | null;
+  modalidad: PedidoModalidad;
+  estado: PedidoEstado;
+  total: number;
+  confirmadoEn: Date | null;
+  entregadoEn: Date | null;
+  items?: PedidoItem[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Pedido extends BaseEntity {
-  constructor(
-    id: string,
-    public comensalId: string,
-    public restauranteId: string,
-    public items: PedidoItem[],
-    public estado: PedidoEstado = PedidoEstado.PENDIENTE,
-    public repartidorId?: string,
-    createdAt?: Date,
-    updatedAt?: Date,
-  ) {
-    super(id, createdAt, updatedAt);
+  readonly numero: number;
+  readonly restauranteId: string;
+  readonly sedeId: string;
+  readonly comensalId: string | null;
+  readonly modalidad: PedidoModalidad;
+  estado: PedidoEstado;
+  total: number;
+  confirmadoEn: Date | null;
+  entregadoEn: Date | null;
+  items: PedidoItem[];
+
+  constructor(props: PedidoProps) {
+    super(props.id, props.createdAt, props.updatedAt);
+    this.numero = props.numero;
+    this.restauranteId = props.restauranteId;
+    this.sedeId = props.sedeId;
+    this.comensalId = props.comensalId;
+    this.modalidad = props.modalidad;
+    this.estado = props.estado;
+    this.total = props.total;
+    this.confirmadoEn = props.confirmadoEn;
+    this.entregadoEn = props.entregadoEn;
+    this.items = props.items ?? [];
   }
 
-  get total(): number {
-    return this.items.reduce(
-      (acc, item) => acc + item.cantidad * item.precioUnitario,
-      0,
-    );
+  perteneceAComensal(userId: string): boolean {
+    return this.comensalId !== null && this.comensalId === userId;
+  }
+
+  /** GP-08 CA1: el comensal confirma su carrito y el pedido entra al flujo. */
+  confirmar(fecha: Date): void {
+    if (this.estado !== PedidoEstado.BORRADOR) {
+      throw new TransicionEstadoInvalidaError(
+        this.estado,
+        ESTADO_INICIAL_PEDIDO,
+      );
+    }
+    this.estado = ESTADO_INICIAL_PEDIDO;
+    this.confirmadoEn = fecha;
+    this.updatedAt = fecha;
+  }
+
+  /** Cambio de estado hecho por el restaurante (GP-08 CA3, CA4). */
+  cambiarEstado(destino: PedidoEstado, fecha: Date): void {
+    if (!esTransicionValida(this.estado, destino, this.modalidad)) {
+      throw new TransicionEstadoInvalidaError(this.estado, destino);
+    }
+    this.estado = destino;
+    this.updatedAt = fecha;
   }
 }
