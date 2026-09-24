@@ -10,7 +10,9 @@ import { PedidoAccess } from './application/use-cases/pedido-access';
 import { PEDIDO_REPOSITORY } from './domain/repositories/pedido.repository';
 import { PedidosController } from './infrastructure/http/pedidos.controller';
 import { PrismaPedidoRepository } from './infrastructure/persistence/prisma-pedido.repository';
+import { PEDIDO_EVENTOS } from './domain/services/pedido-eventos';
 import { PedidosGateway } from './infrastructure/realtime/pedidos.gateway';
+import { SocketPedidoEventos } from './infrastructure/realtime/socket-pedido-eventos';
 
 @Module({
   controllers: [PedidosController],
@@ -23,6 +25,7 @@ import { PedidosGateway } from './infrastructure/realtime/pedidos.gateway';
     ConsultarHistorialPedidoUseCase,
     PedidosGateway,
     { provide: PEDIDO_REPOSITORY, useClass: PrismaPedidoRepository },
+    { provide: PEDIDO_EVENTOS, useClass: SocketPedidoEventos },
   ],
 })
 export class PedidosModule {}

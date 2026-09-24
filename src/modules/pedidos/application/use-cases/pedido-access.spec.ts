@@ -9,7 +9,12 @@ import {
 
 function setup(overrides: Partial<PedidoRepositoryMocks> = {}) {
   const { mocks, repo } = mockPedidoRepository(overrides);
-  const useCase = new CambiarEstadoPedidoUseCase(new PedidoAccess(repo), repo);
+  const eventos = { estadoActualizado: jest.fn().mockResolvedValue(undefined) };
+  const useCase = new CambiarEstadoPedidoUseCase(
+    new PedidoAccess(repo),
+    repo,
+    eventos,
+  );
   return { mocks, useCase };
 }
 

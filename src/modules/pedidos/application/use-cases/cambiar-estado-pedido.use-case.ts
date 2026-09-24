@@ -4,6 +4,8 @@ import { Pedido } from '../../domain/entities/pedido.entity';
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import { PEDIDO_REPOSITORY } from '../../domain/repositories/pedido.repository';
 import type { PedidoRepository } from '../../domain/repositories/pedido.repository';
+import { PEDIDO_EVENTOS } from '../../domain/services/pedido-eventos';
+import type { PedidoEventos } from '../../domain/services/pedido-eventos';
 import { PedidoAccess } from './pedido-access';
 import type { Actor } from './pedido-access';
 
@@ -19,6 +21,7 @@ export class CambiarEstadoPedidoUseCase {
   constructor(
     private readonly access: PedidoAccess,
     @Inject(PEDIDO_REPOSITORY) private readonly pedidos: PedidoRepository,
+    @Inject(PEDIDO_EVENTOS) private readonly eventos: PedidoEventos,
   ) {}
 
   async execute(
@@ -43,6 +46,12 @@ export class CambiarEstadoPedidoUseCase {
         'ORDER_STATUS_CHANGED',
       );
     }
+
+    await this.eventos.estadoActualizado({
+      pedido,
+      estadoAnterior,
+      autorId: actor.id,
+    });
     return pedido;
   }
 }

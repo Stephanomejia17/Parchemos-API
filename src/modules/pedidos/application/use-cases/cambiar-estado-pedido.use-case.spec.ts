@@ -15,8 +15,13 @@ function setup(overrides: Partial<PedidoRepositoryMocks> = {}) {
     esPersonalActivoDeSede: jest.fn().mockResolvedValue(true),
     ...overrides,
   });
-  const useCase = new CambiarEstadoPedidoUseCase(new PedidoAccess(repo), repo);
-  return { mocks, useCase };
+  const eventos = { estadoActualizado: jest.fn().mockResolvedValue(undefined) };
+  const useCase = new CambiarEstadoPedidoUseCase(
+    new PedidoAccess(repo),
+    repo,
+    eventos,
+  );
+  return { mocks, eventos, useCase };
 }
 
 describe('CambiarEstadoPedidoUseCase', () => {
@@ -71,13 +76,28 @@ describe('CambiarEstadoPedidoUseCase', () => {
   });
 
   it('avisa si otro usuario cambió el pedido primero', async () => {
-    const { useCase } = setup({
+    const { eventos, useCase } = setup({
       guardarCambioDeEstado: jest.fn().mockResolvedValue(false),
     });
 
     await expect(
       useCase.execute('pedido-1', personal, { estado: PedidoEstado.LISTO }),
     ).rejects.toThrow('Otro usuario actualizó este pedido.');
+    expect(eventos.estadoActualizado).not.toHaveBeenCalled();
+  });
+
+  it('publica el cambio de estado una vez guardado', async () => {
+    const { eventos, useCase } = setup();
+
+    const pedido = await useCase.execute('pedido-1', personal, {
+      estado: PedidoEstado.LISTO,
+    });
+
+    expect(eventos.estadoActualizado).toHaveBeenCalledWith({
+      pedido,
+      estadoAnterior: PedidoEstado.PENDIENTE,
+      autorId: 'staff-1',
+    });
   });
 
   it('al entregar un pedido listo registra la fecha de finalización', async () => {
