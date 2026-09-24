@@ -5,6 +5,7 @@ import {
   ConsultarEstadoPedidoUseCase,
   ListarMisPedidosUseCase,
 } from './application/use-cases/consultar-estado-pedido.use-case';
+import { ConsultarHistorialPedidoUseCase } from './application/use-cases/consultar-historial-pedido.use-case';
 import { PedidoAccess } from './application/use-cases/pedido-access';
 import { PEDIDO_REPOSITORY } from './domain/repositories/pedido.repository';
 import { PedidosController } from './infrastructure/http/pedidos.controller';
@@ -19,6 +20,7 @@ import { PedidosGateway } from './infrastructure/realtime/pedidos.gateway';
     ConsultarEstadoPedidoUseCase,
     ListarMisPedidosUseCase,
     CambiarEstadoPedidoUseCase,
+    ConsultarHistorialPedidoUseCase,
     PedidosGateway,
     { provide: PEDIDO_REPOSITORY, useClass: PrismaPedidoRepository },
   ],

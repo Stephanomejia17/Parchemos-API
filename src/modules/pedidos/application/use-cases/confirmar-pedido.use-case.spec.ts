@@ -28,6 +28,7 @@ describe('ConfirmarPedidoUseCase', () => {
     expect(mocks.guardarCambioDeEstado).toHaveBeenCalledWith({
       estadoAnterior: PedidoEstado.BORRADOR,
       pedido,
+      autorId: 'comensal-1',
     });
   });
 

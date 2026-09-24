@@ -1,4 +1,4 @@
-import { IsIn } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 
 /** Estados a los que el restaurante puede mover un pedido desde este endpoint. */
@@ -15,4 +15,9 @@ export class CambiarEstadoPedidoDto {
     message: `estado debe ser uno de: ${ESTADOS_GESTIONABLES.join(', ')}.`,
   })
   estado!: (typeof ESTADOS_GESTIONABLES)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  nota?: string;
 }

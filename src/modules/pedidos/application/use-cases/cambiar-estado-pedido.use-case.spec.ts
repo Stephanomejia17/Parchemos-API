@@ -29,12 +29,15 @@ describe('CambiarEstadoPedidoUseCase', () => {
 
     const pedido = await useCase.execute('pedido-1', personal, {
       estado: PedidoEstado.LISTO,
+      nota: 'Sale por la ventanilla 2',
     });
 
     expect(pedido.estado).toBe(PedidoEstado.LISTO);
     expect(mocks.guardarCambioDeEstado).toHaveBeenCalledWith({
       estadoAnterior: PedidoEstado.EN_PREPARACION,
       pedido,
+      autorId: 'staff-1',
+      nota: 'Sale por la ventanilla 2',
     });
   });
 

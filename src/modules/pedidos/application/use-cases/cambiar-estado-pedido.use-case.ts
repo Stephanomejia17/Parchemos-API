@@ -9,6 +9,8 @@ import type { Actor } from './pedido-access';
 
 export interface CambiarEstadoCommand {
   estado: PedidoEstado;
+  /** Comentario opcional que queda en el historial. */
+  nota?: string;
 }
 
 /** GP-08 CA3: el restaurante avanza el pedido por el flujo (p. ej. a "Listo"). */
@@ -32,6 +34,8 @@ export class CambiarEstadoPedidoUseCase {
     const guardado = await this.pedidos.guardarCambioDeEstado({
       estadoAnterior,
       pedido,
+      autorId: actor.id,
+      nota: command.nota,
     });
     if (!guardado) {
       throw new ConflictError(

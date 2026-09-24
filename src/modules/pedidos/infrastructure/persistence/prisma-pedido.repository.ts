@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../infrastructure/prisma/prisma.service';
+import { Role } from '../../../../common/enums/role.enum';
+import { HistorialEstadoPedido } from '../../domain/entities/historial-estado-pedido';
 import { Pedido } from '../../domain/entities/pedido.entity';
+import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import type {
   CambioEstadoPedido,
   PedidoRepository,
@@ -58,18 +61,61 @@ export class PrismaPedidoRepository implements PedidoRepository {
   async guardarCambioDeEstado({
     estadoAnterior,
     pedido,
+    autorId,
+    nota,
   }: CambioEstadoPedido): Promise<boolean> {
-    // El trigger orders_log_status registra la transicion en
-    // order_status_history al cambiar la columna status.
-    const { count } = await this.prisma.order.updateMany({
-      where: { id: pedido.id, status: estadoAnterior },
-      data: {
-        status: pedido.estado,
-        placedAt: pedido.confirmadoEn,
-        deliveredAt: pedido.entregadoEn,
-        updatedAt: pedido.updatedAt,
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.order.updateMany({
+        where: { id: pedido.id, status: estadoAnterior },
+        data: {
+          status: pedido.estado,
+          placedAt: pedido.confirmadoEn,
+          deliveredAt: pedido.entregadoEn,
+          updatedAt: pedido.updatedAt,
+        },
+      });
+      if (count !== 1) return false;
+
+      // El trigger orders_log_status ya inserto la transicion en
+      // order_status_history, pero no sabe quien la hizo: se completa aqui,
+      // dentro de la misma transaccion.
+      const registro = await tx.orderStatusHistory.findFirst({
+        where: {
+          orderId: pedido.id,
+          toStatus: pedido.estado,
+          changedById: null,
+        },
+        orderBy: { id: 'desc' },
+        select: { id: true },
+      });
+      if (registro) {
+        await tx.orderStatusHistory.update({
+          where: { id: registro.id },
+          data: { changedById: autorId, note: nota ?? null },
+        });
+      }
+      return true;
+    });
+  }
+
+  async findHistorial(pedidoId: string): Promise<HistorialEstadoPedido[]> {
+    const rows = await this.prisma.orderStatusHistory.findMany({
+      where: { orderId: pedidoId },
+      orderBy: { id: 'asc' },
+      select: {
+        fromStatus: true,
+        toStatus: true,
+        createdAt: true,
+        note: true,
+        changedBy: { select: { role: true } },
       },
     });
-    return count === 1;
+    return rows.map((row) => ({
+      desde: row.fromStatus as PedidoEstado | null,
+      hacia: row.toStatus as PedidoEstado,
+      fecha: row.createdAt,
+      cambiadoPorRol: (row.changedBy?.role as Role | undefined) ?? null,
+      nota: row.note,
+    }));
   }
 }

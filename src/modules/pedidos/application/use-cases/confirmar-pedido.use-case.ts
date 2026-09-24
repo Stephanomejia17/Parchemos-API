@@ -38,6 +38,7 @@ export class ConfirmarPedidoUseCase {
     const guardado = await this.pedidos.guardarCambioDeEstado({
       estadoAnterior,
       pedido,
+      autorId: comensalId,
     });
     if (!guardado) {
       throw new ConflictError(

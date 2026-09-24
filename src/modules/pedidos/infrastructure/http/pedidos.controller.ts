@@ -19,6 +19,7 @@ import {
   ConsultarEstadoPedidoUseCase,
   ListarMisPedidosUseCase,
 } from '../../application/use-cases/consultar-estado-pedido.use-case';
+import { ConsultarHistorialPedidoUseCase } from '../../application/use-cases/consultar-historial-pedido.use-case';
 import { CambiarEstadoPedidoDto } from './cambiar-estado-pedido.dto';
 import { toPedidoEstadoResponse } from './pedido.presenter';
 
@@ -29,6 +30,7 @@ export class PedidosController {
     private readonly consultarEstado: ConsultarEstadoPedidoUseCase,
     private readonly listarMisPedidos: ListarMisPedidosUseCase,
     private readonly cambiarEstado: CambiarEstadoPedidoUseCase,
+    private readonly consultarHistorial: ConsultarHistorialPedidoUseCase,
   ) {}
 
   @Get('mios')
@@ -58,6 +60,24 @@ export class PedidosController {
       success: true,
       data: toPedidoEstadoResponse(pedido),
       message: 'Estado del pedido consultado correctamente.',
+    };
+  }
+
+  @Get(':id/historial')
+  @Roles(
+    Role.COMENSAL,
+    Role.RESTAURANTE,
+    Role.PERSONAL_RESTAURANTE,
+    Role.ADMINISTRADOR,
+  )
+  async historial(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      success: true,
+      data: await this.consultarHistorial.execute(id, user),
+      message: 'Historial del pedido consultado correctamente.',
     };
   }
 
