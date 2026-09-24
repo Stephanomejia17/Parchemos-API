@@ -1,9 +1,11 @@
 import {
   Controller,
+  Body,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
@@ -11,11 +13,13 @@ import { CurrentUser } from '../../../../common/decorators/current-user.decorato
 import type { AuthenticatedUser } from '../../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../../common/decorators/roles.decorator';
 import { Role } from '../../../../common/enums/role.enum';
+import { CambiarEstadoPedidoUseCase } from '../../application/use-cases/cambiar-estado-pedido.use-case';
 import { ConfirmarPedidoUseCase } from '../../application/use-cases/confirmar-pedido.use-case';
 import {
   ConsultarEstadoPedidoUseCase,
   ListarMisPedidosUseCase,
 } from '../../application/use-cases/consultar-estado-pedido.use-case';
+import { CambiarEstadoPedidoDto } from './cambiar-estado-pedido.dto';
 import { toPedidoEstadoResponse } from './pedido.presenter';
 
 @Controller('pedidos')
@@ -24,6 +28,7 @@ export class PedidosController {
     private readonly confirmarPedido: ConfirmarPedidoUseCase,
     private readonly consultarEstado: ConsultarEstadoPedidoUseCase,
     private readonly listarMisPedidos: ListarMisPedidosUseCase,
+    private readonly cambiarEstado: CambiarEstadoPedidoUseCase,
   ) {}
 
   @Get('mios')
@@ -53,6 +58,21 @@ export class PedidosController {
       success: true,
       data: toPedidoEstadoResponse(pedido),
       message: 'Estado del pedido consultado correctamente.',
+    };
+  }
+
+  @Patch(':id/estado')
+  @Roles(Role.RESTAURANTE, Role.PERSONAL_RESTAURANTE, Role.ADMINISTRADOR)
+  async actualizarEstado(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CambiarEstadoPedidoDto,
+  ) {
+    const pedido = await this.cambiarEstado.execute(id, user, dto);
+    return {
+      success: true,
+      data: toPedidoEstadoResponse(pedido),
+      message: 'Estado del pedido actualizado.',
     };
   }
 

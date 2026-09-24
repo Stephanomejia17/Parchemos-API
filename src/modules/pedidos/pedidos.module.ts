@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CambiarEstadoPedidoUseCase } from './application/use-cases/cambiar-estado-pedido.use-case';
 import { ConfirmarPedidoUseCase } from './application/use-cases/confirmar-pedido.use-case';
 import {
   ConsultarEstadoPedidoUseCase,
@@ -17,6 +18,7 @@ import { PedidosGateway } from './infrastructure/realtime/pedidos.gateway';
     ConfirmarPedidoUseCase,
     ConsultarEstadoPedidoUseCase,
     ListarMisPedidosUseCase,
+    CambiarEstadoPedidoUseCase,
     PedidosGateway,
     { provide: PEDIDO_REPOSITORY, useClass: PrismaPedidoRepository },
   ],

@@ -1,0 +1,44 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { ConflictError } from '../../../../common/errors/conflict-error';
+import { Pedido } from '../../domain/entities/pedido.entity';
+import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
+import { PEDIDO_REPOSITORY } from '../../domain/repositories/pedido.repository';
+import type { PedidoRepository } from '../../domain/repositories/pedido.repository';
+import { PedidoAccess } from './pedido-access';
+import type { Actor } from './pedido-access';
+
+export interface CambiarEstadoCommand {
+  estado: PedidoEstado;
+}
+
+/** GP-08 CA3: el restaurante avanza el pedido por el flujo (p. ej. a "Listo"). */
+@Injectable()
+export class CambiarEstadoPedidoUseCase {
+  constructor(
+    private readonly access: PedidoAccess,
+    @Inject(PEDIDO_REPOSITORY) private readonly pedidos: PedidoRepository,
+  ) {}
+
+  async execute(
+    pedidoId: string,
+    actor: Actor,
+    command: CambiarEstadoCommand,
+  ): Promise<Pedido> {
+    const pedido = await this.access.findOrFail(pedidoId);
+
+    const estadoAnterior = pedido.estado;
+    pedido.cambiarEstado(command.estado, new Date());
+
+    const guardado = await this.pedidos.guardarCambioDeEstado({
+      estadoAnterior,
+      pedido,
+    });
+    if (!guardado) {
+      throw new ConflictError(
+        'Otro usuario actualizó este pedido. Recarga para ver su estado actual.',
+        'ORDER_STATUS_CHANGED',
+      );
+    }
+    return pedido;
+  }
+}
