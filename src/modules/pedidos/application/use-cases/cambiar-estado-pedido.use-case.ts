@@ -26,7 +26,7 @@ export class CambiarEstadoPedidoUseCase {
     actor: Actor,
     command: CambiarEstadoCommand,
   ): Promise<Pedido> {
-    const pedido = await this.access.findOrFail(pedidoId);
+    const pedido = await this.access.findGestionableOrFail(pedidoId, actor);
 
     const estadoAnterior = pedido.estado;
     pedido.cambiarEstado(command.estado, new Date());

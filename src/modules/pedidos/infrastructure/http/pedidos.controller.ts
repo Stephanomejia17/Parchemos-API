@@ -15,6 +15,7 @@ import { Roles } from '../../../../common/decorators/roles.decorator';
 import { Role } from '../../../../common/enums/role.enum';
 import { CambiarEstadoPedidoUseCase } from '../../application/use-cases/cambiar-estado-pedido.use-case';
 import { ConfirmarPedidoUseCase } from '../../application/use-cases/confirmar-pedido.use-case';
+import { ROLES_GESTORES } from '../../application/use-cases/pedido-access';
 import {
   ConsultarEstadoPedidoUseCase,
   ListarMisPedidosUseCase,
@@ -82,7 +83,7 @@ export class PedidosController {
   }
 
   @Patch(':id/estado')
-  @Roles(Role.RESTAURANTE, Role.PERSONAL_RESTAURANTE, Role.ADMINISTRADOR)
+  @Roles(...ROLES_GESTORES)
   async actualizarEstado(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Role } from '../../../../common/enums/role.enum';
+import { ForbiddenError } from '../../../../common/errors/forbidden-error';
 import { NotFoundError } from '../../../../common/errors/not-found-error';
 import { Pedido } from '../../domain/entities/pedido.entity';
 import { PEDIDO_REPOSITORY } from '../../domain/repositories/pedido.repository';
@@ -9,6 +10,13 @@ export interface Actor {
   id: string;
   role: Role;
 }
+
+/** Roles que pueden cambiar el estado de un pedido (siempre sobre su sede). */
+export const ROLES_GESTORES: readonly Role[] = [
+  Role.PERSONAL_RESTAURANTE,
+  Role.RESTAURANTE,
+  Role.ADMINISTRADOR,
+];
 
 @Injectable()
 export class PedidoAccess {
@@ -33,6 +41,23 @@ export class PedidoAccess {
     const pedido = await this.findOrFail(pedidoId);
     if (!(await this.puedeVer(pedido, actor))) {
       throw new NotFoundError('El pedido no existe.', 'ORDER_NOT_FOUND');
+    }
+    return pedido;
+  }
+
+  /**
+   * GP-08: solo el personal autorizado cambia el estado: el personal activo
+   * de la sede del pedido, el dueño del restaurante o el administrador. El
+   * personal de otra sede ni siquiera ve el pedido (404); el comensal lo ve,
+   * pero no puede gestionarlo (403).
+   */
+  async findGestionableOrFail(pedidoId: string, actor: Actor): Promise<Pedido> {
+    const pedido = await this.findVisibleOrFail(pedidoId, actor);
+    if (!ROLES_GESTORES.includes(actor.role)) {
+      throw new ForbiddenError(
+        'Solo el personal del restaurante puede actualizar el estado del pedido.',
+        'ORDER_STATUS_FORBIDDEN',
+      );
     }
     return pedido;
   }
