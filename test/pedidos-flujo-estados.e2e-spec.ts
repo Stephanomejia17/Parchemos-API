@@ -161,6 +161,13 @@ class EventosRegistrados implements PedidoEventos {
     this.publicados.push(evento);
     return Promise.resolve();
   }
+
+  readonly recibidos: Pedido[] = [];
+
+  pedidoRecibido(pedido: Pedido): Promise<void> {
+    this.recibidos.push(pedido);
+    return Promise.resolve();
+  }
 }
 
 /** Reemplaza al SupabaseJwtGuard: el usuario llega en el header x-test-user. */

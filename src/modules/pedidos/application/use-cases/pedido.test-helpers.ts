@@ -38,3 +38,11 @@ export function mockPedidoRepository(
   };
   return { mocks, repo: mocks };
 }
+
+/** Publicador de eventos falso que registra lo que se publica. */
+export function mockPedidoEventos() {
+  return {
+    estadoActualizado: jest.fn().mockResolvedValue(undefined),
+    pedidoRecibido: jest.fn().mockResolvedValue(undefined),
+  };
+}

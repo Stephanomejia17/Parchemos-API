@@ -3,13 +3,14 @@ import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import { CambiarEstadoPedidoUseCase } from './cambiar-estado-pedido.use-case';
 import { PedidoAccess } from './pedido-access';
 import {
+  mockPedidoEventos,
   mockPedidoRepository,
   PedidoRepositoryMocks,
 } from './pedido.test-helpers';
 
 function setup(overrides: Partial<PedidoRepositoryMocks> = {}) {
   const { mocks, repo } = mockPedidoRepository(overrides);
-  const eventos = { estadoActualizado: jest.fn().mockResolvedValue(undefined) };
+  const eventos = mockPedidoEventos();
   const useCase = new CambiarEstadoPedidoUseCase(
     new PedidoAccess(repo),
     repo,
