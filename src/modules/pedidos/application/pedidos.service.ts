@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { ESTADO_INICIAL_PEDIDO } from '../domain/services/pedido-estado-flujo';
 
 @Injectable()
 export class PedidosService {
@@ -74,12 +75,18 @@ export class PedidosService {
           restaurantId: location.restaurantId,
           dinerId,
           fulfillment: 'para_llevar',
-          status: 'pendiente',
+          status: ESTADO_INICIAL_PEDIDO,
           paymentStatus: 'pendiente',
           deliveryFee,
           placedAt: new Date(),
           items: { create: orderItems },
         },
+      });
+      // GP-08 CA6: el trigger orders_log_status crea el primer registro del
+      // historial; queda a nombre del comensal que confirmó el pedido.
+      await tx.orderStatusHistory.updateMany({
+        where: { orderId: order.id, changedById: null },
+        data: { changedById: dinerId },
       });
       const savedOrder = await tx.order.findUniqueOrThrow({
         where: { id: order.id },
