@@ -20,9 +20,11 @@ import { ConfirmarPedidoUseCase } from '../src/modules/pedidos/application/use-c
 import { ConsultarEstadoPedidoUseCase } from '../src/modules/pedidos/application/use-cases/consultar-estado-pedido.use-case';
 import { ConsultarHistorialPedidoUseCase } from '../src/modules/pedidos/application/use-cases/consultar-historial-pedido.use-case';
 import { ListarPedidosEnCursoDeSedeUseCase } from '../src/modules/pedidos/application/use-cases/listar-pedidos-en-curso-de-sede.use-case';
+import { ListarPedidosEnSalaUseCase } from '../src/modules/pedidos/application/use-cases/listar-pedidos-en-sala.use-case';
 import { PedidoAccess } from '../src/modules/pedidos/application/use-cases/pedido-access';
 import type { HistorialEstadoPedido } from '../src/modules/pedidos/domain/entities/historial-estado-pedido';
 import { Pedido } from '../src/modules/pedidos/domain/entities/pedido.entity';
+import type { PedidoEnSala } from '../src/modules/pedidos/domain/entities/pedido-en-sala';
 import { PedidoEstado } from '../src/modules/pedidos/domain/enums/pedido-estado.enum';
 import { PedidoModalidad } from '../src/modules/pedidos/domain/enums/pedido-modalidad.enum';
 import {
@@ -107,6 +109,16 @@ class InMemoryPedidoRepository implements PedidoRepository {
           !ESTADOS_FINALES.includes(p.estado),
       ),
     );
+  }
+
+  async findEnSalaDeSede(sedeId: string): Promise<PedidoEnSala[]> {
+    const pedidos = await this.findEnCursoDeSede(sedeId);
+    return pedidos.map((pedido) => ({
+      pedido,
+      mesa: null,
+      items: [],
+      estadoPago: 'pendiente',
+    }));
   }
 
   restauranteDeSede(sedeId: string): Promise<string | null> {
@@ -229,6 +241,7 @@ describe('GP-08 flujo completo de estados del pedido (e2e)', () => {
         CambiarEstadoPedidoUseCase,
         ConsultarHistorialPedidoUseCase,
         ListarPedidosEnCursoDeSedeUseCase,
+        ListarPedidosEnSalaUseCase,
         { provide: PedidosService, useValue: {} },
         { provide: PEDIDO_REPOSITORY, useValue: repo },
         { provide: PEDIDO_EVENTOS, useValue: eventos },

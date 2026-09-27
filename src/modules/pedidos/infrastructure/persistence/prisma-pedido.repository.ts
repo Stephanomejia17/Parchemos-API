@@ -9,7 +9,13 @@ import type {
   CambioEstadoPedido,
   PedidoRepository,
 } from '../../domain/repositories/pedido.repository';
-import { PEDIDO_SELECT, toPedidoDomain } from './pedido.mapper';
+import type { PedidoEnSala } from '../../domain/entities/pedido-en-sala';
+import {
+  PEDIDO_EN_SALA_SELECT,
+  PEDIDO_SELECT,
+  toPedidoDomain,
+  toPedidoEnSala,
+} from './pedido.mapper';
 
 @Injectable()
 export class PrismaPedidoRepository implements PedidoRepository {
@@ -34,6 +40,19 @@ export class PrismaPedidoRepository implements PedidoRepository {
       select: PEDIDO_SELECT,
     });
     return rows.map(toPedidoDomain);
+  }
+
+  async findEnSalaDeSede(sedeId: string): Promise<PedidoEnSala[]> {
+    const rows = await this.prisma.order.findMany({
+      where: {
+        locationId: sedeId,
+        status: { notIn: [PedidoEstado.BORRADOR, ...ESTADOS_FINALES] },
+      },
+      orderBy: { placedAt: 'asc' },
+      take: 200,
+      select: PEDIDO_EN_SALA_SELECT,
+    });
+    return rows.map(toPedidoEnSala);
   }
 
   async restauranteDeSede(sedeId: string): Promise<string | null> {
