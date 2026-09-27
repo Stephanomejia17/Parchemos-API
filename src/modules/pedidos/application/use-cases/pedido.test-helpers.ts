@@ -28,6 +28,15 @@ export function mockPedidoRepository(
   const mocks: PedidoRepositoryMocks = {
     findById: jest.fn().mockResolvedValue(makePedido()),
     findEnCursoDeSede: jest.fn().mockResolvedValue([]),
+    findEnSalaDeSede: jest.fn().mockResolvedValue([]),
+    findCuentasPendientesDeSede: jest.fn().mockResolvedValue([]),
+    resumenDeSede: jest.fn().mockResolvedValue({
+      ordenesHoy: 0,
+      pendientes: 0,
+      mesasOcupadas: 0,
+      mesasTotales: 0,
+      entregadasHoy: 0,
+    }),
     restauranteDeSede: jest.fn().mockResolvedValue('rest-1'),
     findHistorial: jest.fn().mockResolvedValue([]),
     contarItems: jest.fn().mockResolvedValue(1),
@@ -37,4 +46,12 @@ export function mockPedidoRepository(
     ...overrides,
   };
   return { mocks, repo: mocks };
+}
+
+/** Publicador de eventos falso que registra lo que se publica. */
+export function mockPedidoEventos() {
+  return {
+    estadoActualizado: jest.fn().mockResolvedValue(undefined),
+    pedidoRecibido: jest.fn().mockResolvedValue(undefined),
+  };
 }

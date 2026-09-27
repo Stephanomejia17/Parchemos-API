@@ -6,7 +6,12 @@ import type {
   PedidoEventos,
 } from '../../domain/services/pedido-eventos';
 import { toPedidoEstadoResponse } from '../http/pedido.presenter';
-import { EVENTO_ESTADO_PEDIDO, PedidosGateway } from './pedidos.gateway';
+import { Pedido } from '../../domain/entities/pedido.entity';
+import {
+  EVENTO_ESTADO_PEDIDO,
+  EVENTO_PEDIDO_NUEVO,
+  PedidosGateway,
+} from './pedidos.gateway';
 
 const MENSAJES: Partial<Record<PedidoEstado, string>> = {
   [PedidoEstado.CONFIRMADO]: 'El restaurante confirmó tu pedido.',
@@ -36,15 +41,17 @@ export class SocketPedidoEventos implements PedidoEventos {
     estadoAnterior,
     autorId,
   }: EstadoPedidoActualizado): Promise<void> {
-    const comensalId = pedido.comensalId;
-    // Sin comensal (pedido tomado por el mesero) o cambio hecho por el propio
-    // comensal: no hay a quien avisar.
-    if (!comensalId || comensalId === autorId) return;
-
     const payload = {
       ...toPedidoEstadoResponse(pedido),
       estadoAnterior,
     };
+    // GP-05: el resto del personal de la sede ve el cambio sin recargar.
+    this.emitirASede(pedido.sedeId, EVENTO_ESTADO_PEDIDO, payload);
+
+    const comensalId = pedido.comensalId;
+    // Sin comensal (pedido tomado por el mesero) o cambio hecho por el propio
+    // comensal: no hay a quien avisar.
+    if (!comensalId || comensalId === autorId) return;
 
     try {
       const notificacion = await this.prisma.notification.create({
@@ -66,6 +73,26 @@ export class SocketPedidoEventos implements PedidoEventos {
     } catch (error) {
       this.logger.error(
         `No se pudo notificar el cambio del pedido ${pedido.id}`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
+  }
+
+  pedidoRecibido(pedido: Pedido): Promise<void> {
+    this.emitirASede(
+      pedido.sedeId,
+      EVENTO_PEDIDO_NUEVO,
+      toPedidoEstadoResponse(pedido),
+    );
+    return Promise.resolve();
+  }
+
+  private emitirASede(sedeId: string, evento: string, payload: unknown): void {
+    try {
+      this.gateway.emitirASede(sedeId, evento, payload);
+    } catch (error) {
+      this.logger.error(
+        `No se pudo avisar a la sede ${sedeId}`,
         error instanceof Error ? error.stack : error,
       );
     }

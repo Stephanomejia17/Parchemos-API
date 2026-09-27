@@ -2,6 +2,7 @@ import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import { ConfirmarPedidoUseCase } from './confirmar-pedido.use-case';
 import {
   makePedido,
+  mockPedidoEventos,
   mockPedidoRepository,
   PedidoRepositoryMocks,
 } from './pedido.test-helpers';
@@ -15,12 +16,13 @@ function setup(overrides: Partial<PedidoRepositoryMocks> = {}) {
       ),
     ...overrides,
   });
-  return { mocks, useCase: new ConfirmarPedidoUseCase(repo) };
+  const eventos = mockPedidoEventos();
+  return { mocks, eventos, useCase: new ConfirmarPedidoUseCase(repo, eventos) };
 }
 
 describe('ConfirmarPedidoUseCase', () => {
   it('asigna el estado inicial y la fecha de confirmación', async () => {
-    const { mocks, useCase } = setup();
+    const { mocks, eventos, useCase } = setup();
     const pedido = await useCase.execute('pedido-1', 'comensal-1');
 
     expect(pedido.estado).toBe(PedidoEstado.PENDIENTE);
@@ -30,6 +32,7 @@ describe('ConfirmarPedidoUseCase', () => {
       pedido,
       autorId: 'comensal-1',
     });
+    expect(eventos.pedidoRecibido).toHaveBeenCalledWith(pedido);
   });
 
   it('rechaza confirmar el pedido de otro comensal', async () => {

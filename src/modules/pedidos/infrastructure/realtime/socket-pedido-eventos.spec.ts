@@ -8,13 +8,14 @@ import { SocketPedidoEventos } from './socket-pedido-eventos';
 // El gateway real autentica con Supabase; aqui solo importa que se le llame.
 jest.mock('./pedidos.gateway', () => ({
   EVENTO_ESTADO_PEDIDO: 'pedido.estado',
+  EVENTO_PEDIDO_NUEVO: 'pedido.nuevo',
   PedidosGateway: class {},
 }));
 
 function setup(
   notificationCreate = jest.fn().mockResolvedValue({ id: 'n-1' }),
 ) {
-  const gateway = { emitirAUsuario: jest.fn() };
+  const gateway = { emitirAUsuario: jest.fn(), emitirASede: jest.fn() };
   const prisma = { notification: { create: notificationCreate } };
   const eventos = new SocketPedidoEventos(
     gateway as unknown as PedidosGateway,
@@ -82,5 +83,34 @@ describe('SocketPedidoEventos', () => {
       }),
     ).resolves.toBeUndefined();
     expect(gateway.emitirAUsuario).not.toHaveBeenCalled();
+  });
+
+  it('GP-05: avisa a la sede cuando entra un pedido nuevo', async () => {
+    const { gateway, eventos } = setup();
+
+    await eventos.pedidoRecibido(makePedido());
+
+    expect(gateway.emitirASede).toHaveBeenCalledWith(
+      'sede-1',
+      'pedido.nuevo',
+      expect.objectContaining({ id: 'pedido-1', estado: 'pendiente' }),
+    );
+    expect(gateway.emitirAUsuario).not.toHaveBeenCalled();
+  });
+
+  it('GP-05: el resto del personal de la sede también ve los cambios de estado', async () => {
+    const { gateway, eventos } = setup();
+
+    await eventos.estadoActualizado({
+      pedido: makePedido({ estado: PedidoEstado.LISTO }),
+      estadoAnterior: PedidoEstado.PENDIENTE,
+      autorId: 'staff-1',
+    });
+
+    expect(gateway.emitirASede).toHaveBeenCalledWith(
+      'sede-1',
+      'pedido.estado',
+      expect.objectContaining({ estado: PedidoEstado.LISTO }),
+    );
   });
 });

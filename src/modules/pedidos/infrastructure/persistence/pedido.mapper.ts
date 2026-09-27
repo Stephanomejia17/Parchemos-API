@@ -3,6 +3,7 @@ import type {
   OrderStatus,
 } from '../../../../../generated/prisma/client';
 import { Pedido } from '../../domain/entities/pedido.entity';
+import type { PedidoEnSala } from '../../domain/entities/pedido-en-sala';
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import { PedidoModalidad } from '../../domain/enums/pedido-modalidad.enum';
 
@@ -54,4 +55,47 @@ export function toPedidoDomain(row: PedidoPersistenceRow): Pedido {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });
+}
+
+export const PEDIDO_EN_SALA_SELECT = {
+  ...PEDIDO_SELECT,
+  paymentStatus: true,
+  table: { select: { id: true, code: true } },
+  items: {
+    orderBy: { createdAt: 'asc' },
+    select: {
+      productName: true,
+      quantity: true,
+      unitPrice: true,
+      lineTotal: true,
+      notes: true,
+    },
+  },
+} as const;
+
+export interface PedidoEnSalaPersistenceRow extends PedidoPersistenceRow {
+  paymentStatus: string;
+  table: { id: string; code: string } | null;
+  items: {
+    productName: string;
+    quantity: number;
+    unitPrice: { toNumber(): number };
+    lineTotal: { toNumber(): number };
+    notes: string | null;
+  }[];
+}
+
+export function toPedidoEnSala(row: PedidoEnSalaPersistenceRow): PedidoEnSala {
+  return {
+    pedido: toPedidoDomain(row),
+    mesa: row.table ? { id: row.table.id, codigo: row.table.code } : null,
+    estadoPago: row.paymentStatus,
+    items: row.items.map((item) => ({
+      nombre: item.productName,
+      cantidad: item.quantity,
+      precioUnitario: item.unitPrice.toNumber(),
+      subtotal: item.lineTotal.toNumber(),
+      notas: item.notes,
+    })),
+  };
 }
