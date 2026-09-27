@@ -82,8 +82,11 @@ export class PedidosController {
 
   @Get('sede/:sedeId/mesas')
   @Roles(...ROLES_GESTORES)
-  async enSalaPorMesa(@Param('sedeId', ParseUUIDPipe) sedeId: string) {
-    const mesas = await this.listarEnSala.execute(sedeId);
+  async enSalaPorMesa(
+    @Param('sedeId', ParseUUIDPipe) sedeId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const mesas = await this.listarEnSala.execute(sedeId, user);
     return {
       success: true,
       data: mesas.map(toMesaConPedidosResponse),
