@@ -15,6 +15,10 @@ export interface CambioEstadoPedido {
 
 export interface PedidoRepository {
   findById(id: string): Promise<Pedido | null>;
+  /** Pedidos confirmados y aún no finalizados de una sede, del más antiguo al más reciente. */
+  findEnCursoDeSede(sedeId: string): Promise<Pedido[]>;
+  /** Restaurante al que pertenece la sede, o null si la sede no existe. */
+  restauranteDeSede(sedeId: string): Promise<string | null>;
   /** Transiciones del pedido en orden cronologico. */
   findHistorial(pedidoId: string): Promise<HistorialEstadoPedido[]>;
   contarItems(pedidoId: string): Promise<number>;

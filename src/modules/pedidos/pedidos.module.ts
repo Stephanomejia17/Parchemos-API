@@ -4,6 +4,7 @@ import { CambiarEstadoPedidoUseCase } from './application/use-cases/cambiar-esta
 import { ConfirmarPedidoUseCase } from './application/use-cases/confirmar-pedido.use-case';
 import { ConsultarEstadoPedidoUseCase } from './application/use-cases/consultar-estado-pedido.use-case';
 import { ConsultarHistorialPedidoUseCase } from './application/use-cases/consultar-historial-pedido.use-case';
+import { ListarPedidosEnCursoDeSedeUseCase } from './application/use-cases/listar-pedidos-en-curso-de-sede.use-case';
 import { PedidoAccess } from './application/use-cases/pedido-access';
 import { PEDIDO_REPOSITORY } from './domain/repositories/pedido.repository';
 import { PEDIDO_EVENTOS } from './domain/services/pedido-eventos';
@@ -21,6 +22,7 @@ import { SocketPedidoEventos } from './infrastructure/realtime/socket-pedido-eve
     ConsultarEstadoPedidoUseCase,
     CambiarEstadoPedidoUseCase,
     ConsultarHistorialPedidoUseCase,
+    ListarPedidosEnCursoDeSedeUseCase,
     PedidosGateway,
     { provide: PEDIDO_REPOSITORY, useClass: PrismaPedidoRepository },
     { provide: PEDIDO_EVENTOS, useClass: SocketPedidoEventos },

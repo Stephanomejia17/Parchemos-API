@@ -62,6 +62,28 @@ export class PedidoAccess {
     return pedido;
   }
 
+  /**
+   * Panel de sala: solo el personal activo de la sede, el dueño de su
+   * restaurante o el administrador ven los pedidos de una sede. Para
+   * cualquier otro la sede "no existe".
+   */
+  async assertPuedeGestionarSede(sedeId: string, actor: Actor): Promise<void> {
+    const restauranteId = await this.pedidos.restauranteDeSede(sedeId);
+    const permitido =
+      restauranteId !== null &&
+      (actor.role === Role.ADMINISTRADOR ||
+        (actor.role === Role.RESTAURANTE &&
+          (await this.pedidos.esDuenoDelRestaurante(
+            restauranteId,
+            actor.id,
+          ))) ||
+        (actor.role === Role.PERSONAL_RESTAURANTE &&
+          (await this.pedidos.esPersonalActivoDeSede(sedeId, actor.id))));
+    if (!permitido) {
+      throw new NotFoundError('La sede no existe.', 'LOCATION_NOT_FOUND');
+    }
+  }
+
   private async puedeVer(pedido: Pedido, actor: Actor): Promise<boolean> {
     switch (actor.role) {
       case Role.ADMINISTRADOR:

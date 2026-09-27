@@ -4,6 +4,7 @@ import { Role } from '../../../../common/enums/role.enum';
 import { HistorialEstadoPedido } from '../../domain/entities/historial-estado-pedido';
 import { Pedido } from '../../domain/entities/pedido.entity';
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
+import { ESTADOS_FINALES } from '../../domain/services/pedido-estado-flujo';
 import type {
   CambioEstadoPedido,
   PedidoRepository,
@@ -20,6 +21,27 @@ export class PrismaPedidoRepository implements PedidoRepository {
       select: PEDIDO_SELECT,
     });
     return row ? toPedidoDomain(row) : null;
+  }
+
+  async findEnCursoDeSede(sedeId: string): Promise<Pedido[]> {
+    const rows = await this.prisma.order.findMany({
+      where: {
+        locationId: sedeId,
+        status: { notIn: [PedidoEstado.BORRADOR, ...ESTADOS_FINALES] },
+      },
+      orderBy: { placedAt: 'asc' },
+      take: 100,
+      select: PEDIDO_SELECT,
+    });
+    return rows.map(toPedidoDomain);
+  }
+
+  async restauranteDeSede(sedeId: string): Promise<string | null> {
+    const row = await this.prisma.location.findUnique({
+      where: { id: sedeId },
+      select: { restaurantId: true },
+    });
+    return row?.restaurantId ?? null;
   }
 
   contarItems(pedidoId: string): Promise<number> {
