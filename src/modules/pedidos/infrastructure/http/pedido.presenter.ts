@@ -34,6 +34,10 @@ export function toPedidoEnSalaResponse({
   return { ...toPedidoEstadoResponse(pedido), mesa, estadoPago, items };
 }
 
-export function toMesaConPedidosResponse({ mesa, pedidos }: MesaConPedidos) {
-  return { mesa, pedidos: pedidos.map(toPedidoEnSalaResponse) };
+export function toMesaConPedidosResponse({
+  mesa,
+  pedidos,
+  totalPendiente,
+}: MesaConPedidos) {
+  return { mesa, totalPendiente, pedidos: pedidos.map(toPedidoEnSalaResponse) };
 }

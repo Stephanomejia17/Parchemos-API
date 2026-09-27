@@ -8,7 +8,7 @@ import type { PedidoRepository } from '../../domain/repositories/pedido.reposito
 
 /**
  * GP-05 CA1/CA2: pedidos en curso de la sede agrupados por mesa, con sus
- * productos, cantidades y modalidad.
+ * productos, cantidades y modalidad, y lo que falta pagar en cada mesa (CA3).
  */
 @Injectable()
 export class ListarPedidosEnSalaUseCase {
@@ -17,6 +17,10 @@ export class ListarPedidosEnSalaUseCase {
   ) {}
 
   async execute(sedeId: string): Promise<MesaConPedidos[]> {
-    return agruparPorMesa(await this.pedidos.findEnSalaDeSede(sedeId));
+    const [enSala, cuentas] = await Promise.all([
+      this.pedidos.findEnSalaDeSede(sedeId),
+      this.pedidos.findCuentasPendientesDeSede(sedeId),
+    ]);
+    return agruparPorMesa(enSala, cuentas);
   }
 }

@@ -24,7 +24,10 @@ import { ListarPedidosEnSalaUseCase } from '../src/modules/pedidos/application/u
 import { PedidoAccess } from '../src/modules/pedidos/application/use-cases/pedido-access';
 import type { HistorialEstadoPedido } from '../src/modules/pedidos/domain/entities/historial-estado-pedido';
 import { Pedido } from '../src/modules/pedidos/domain/entities/pedido.entity';
-import type { PedidoEnSala } from '../src/modules/pedidos/domain/entities/pedido-en-sala';
+import type {
+  CuentaPendiente,
+  PedidoEnSala,
+} from '../src/modules/pedidos/domain/entities/pedido-en-sala';
 import { PedidoEstado } from '../src/modules/pedidos/domain/enums/pedido-estado.enum';
 import { PedidoModalidad } from '../src/modules/pedidos/domain/enums/pedido-modalidad.enum';
 import {
@@ -109,6 +112,10 @@ class InMemoryPedidoRepository implements PedidoRepository {
           !ESTADOS_FINALES.includes(p.estado),
       ),
     );
+  }
+
+  findCuentasPendientesDeSede(): Promise<CuentaPendiente[]> {
+    return Promise.resolve([]);
   }
 
   async findEnSalaDeSede(sedeId: string): Promise<PedidoEnSala[]> {

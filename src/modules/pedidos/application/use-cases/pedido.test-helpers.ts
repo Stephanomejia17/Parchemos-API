@@ -29,6 +29,7 @@ export function mockPedidoRepository(
     findById: jest.fn().mockResolvedValue(makePedido()),
     findEnCursoDeSede: jest.fn().mockResolvedValue([]),
     findEnSalaDeSede: jest.fn().mockResolvedValue([]),
+    findCuentasPendientesDeSede: jest.fn().mockResolvedValue([]),
     restauranteDeSede: jest.fn().mockResolvedValue('rest-1'),
     findHistorial: jest.fn().mockResolvedValue([]),
     contarItems: jest.fn().mockResolvedValue(1),
