@@ -1,57 +1,66 @@
 import {
-  Controller,
   Body,
+  Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
-  Patch,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../../common/decorators/roles.decorator';
 import { Role } from '../../../../common/enums/role.enum';
+import { CreatePedidoDto } from '../../application/dto/create-pedido.dto';
+import { PedidosService } from '../../application/pedidos.service';
 import { CambiarEstadoPedidoUseCase } from '../../application/use-cases/cambiar-estado-pedido.use-case';
 import { ConfirmarPedidoUseCase } from '../../application/use-cases/confirmar-pedido.use-case';
-import { ROLES_GESTORES } from '../../application/use-cases/pedido-access';
-import {
-  ConsultarEstadoPedidoUseCase,
-  ListarMisPedidosUseCase,
-} from '../../application/use-cases/consultar-estado-pedido.use-case';
+import { ConsultarEstadoPedidoUseCase } from '../../application/use-cases/consultar-estado-pedido.use-case';
 import { ConsultarHistorialPedidoUseCase } from '../../application/use-cases/consultar-historial-pedido.use-case';
+import { ROLES_GESTORES } from '../../application/use-cases/pedido-access';
 import { CambiarEstadoPedidoDto } from './cambiar-estado-pedido.dto';
 import { toPedidoEstadoResponse } from './pedido.presenter';
+
+const ROLES_LECTORES = [Role.COMENSAL, ...ROLES_GESTORES];
 
 @Controller('pedidos')
 export class PedidosController {
   constructor(
+    private readonly pedidos: PedidosService,
     private readonly confirmarPedido: ConfirmarPedidoUseCase,
     private readonly consultarEstado: ConsultarEstadoPedidoUseCase,
-    private readonly listarMisPedidos: ListarMisPedidosUseCase,
     private readonly cambiarEstado: CambiarEstadoPedidoUseCase,
     private readonly consultarHistorial: ConsultarHistorialPedidoUseCase,
   ) {}
 
-  @Get('mios')
+  @Post()
   @Roles(Role.COMENSAL)
-  async mios(@CurrentUser() user: AuthenticatedUser) {
-    const pedidos = await this.listarMisPedidos.execute(user.id);
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreatePedidoDto,
+  ) {
     return {
       success: true,
-      data: pedidos.map(toPedidoEstadoResponse),
+      data: await this.pedidos.create(user.id, dto.locationId, dto.items),
+      message: 'Pedido registrado correctamente.',
+    };
+  }
+
+  @Get('mios')
+  @Roles(Role.COMENSAL)
+  async listMine(@CurrentUser() user: AuthenticatedUser) {
+    return {
+      success: true,
+      data: await this.pedidos.listMine(user.id),
       message: 'Pedidos consultados correctamente.',
     };
   }
 
   @Get(':id/estado')
-  @Roles(
-    Role.COMENSAL,
-    Role.RESTAURANTE,
-    Role.PERSONAL_RESTAURANTE,
-    Role.ADMINISTRADOR,
-  )
+  @Roles(...ROLES_LECTORES)
   async estado(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -65,12 +74,7 @@ export class PedidosController {
   }
 
   @Get(':id/historial')
-  @Roles(
-    Role.COMENSAL,
-    Role.RESTAURANTE,
-    Role.PERSONAL_RESTAURANTE,
-    Role.ADMINISTRADOR,
-  )
+  @Roles(...ROLES_LECTORES)
   async historial(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,

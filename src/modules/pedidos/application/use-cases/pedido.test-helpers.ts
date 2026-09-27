@@ -27,7 +27,6 @@ export function mockPedidoRepository(
 ): { mocks: PedidoRepositoryMocks; repo: PedidoRepository } {
   const mocks: PedidoRepositoryMocks = {
     findById: jest.fn().mockResolvedValue(makePedido()),
-    findConfirmadosDeComensal: jest.fn().mockResolvedValue([]),
     findHistorial: jest.fn().mockResolvedValue([]),
     contarItems: jest.fn().mockResolvedValue(1),
     esDuenoDelRestaurante: jest.fn().mockResolvedValue(false),

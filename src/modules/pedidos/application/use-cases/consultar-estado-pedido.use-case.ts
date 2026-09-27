@@ -1,7 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Pedido } from '../../domain/entities/pedido.entity';
-import { PEDIDO_REPOSITORY } from '../../domain/repositories/pedido.repository';
-import type { PedidoRepository } from '../../domain/repositories/pedido.repository';
 import { PedidoAccess } from './pedido-access';
 import type { Actor } from './pedido-access';
 
@@ -12,17 +10,5 @@ export class ConsultarEstadoPedidoUseCase {
 
   execute(pedidoId: string, actor: Actor): Promise<Pedido> {
     return this.access.findVisibleOrFail(pedidoId, actor);
-  }
-}
-
-/** Pedidos del comensal con su estado, para listarlos y hacerles seguimiento. */
-@Injectable()
-export class ListarMisPedidosUseCase {
-  constructor(
-    @Inject(PEDIDO_REPOSITORY) private readonly pedidos: PedidoRepository,
-  ) {}
-
-  execute(comensalId: string): Promise<Pedido[]> {
-    return this.pedidos.findConfirmadosDeComensal(comensalId);
   }
 }

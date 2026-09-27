@@ -22,16 +22,6 @@ export class PrismaPedidoRepository implements PedidoRepository {
     return row ? toPedidoDomain(row) : null;
   }
 
-  async findConfirmadosDeComensal(comensalId: string): Promise<Pedido[]> {
-    const rows = await this.prisma.order.findMany({
-      where: { dinerId: comensalId, status: { not: 'borrador' } },
-      orderBy: { placedAt: 'desc' },
-      take: 50,
-      select: PEDIDO_SELECT,
-    });
-    return rows.map(toPedidoDomain);
-  }
-
   contarItems(pedidoId: string): Promise<number> {
     return this.prisma.orderItem.count({ where: { orderId: pedidoId } });
   }

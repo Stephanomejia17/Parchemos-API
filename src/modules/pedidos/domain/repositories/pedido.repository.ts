@@ -15,8 +15,6 @@ export interface CambioEstadoPedido {
 
 export interface PedidoRepository {
   findById(id: string): Promise<Pedido | null>;
-  /** Pedidos ya confirmados del comensal, del mas reciente al mas antiguo. */
-  findConfirmadosDeComensal(comensalId: string): Promise<Pedido[]>;
   /** Transiciones del pedido en orden cronologico. */
   findHistorial(pedidoId: string): Promise<HistorialEstadoPedido[]>;
   contarItems(pedidoId: string): Promise<number>;
