@@ -21,6 +21,7 @@ import { ConsultarEstadoPedidoUseCase } from '../../src/modules/pedidos/applicat
 import { ConsultarHistorialPedidoUseCase } from '../../src/modules/pedidos/application/use-cases/consultar-historial-pedido.use-case';
 import { ListarPedidosEnCursoDeSedeUseCase } from '../../src/modules/pedidos/application/use-cases/listar-pedidos-en-curso-de-sede.use-case';
 import { ListarPedidosEnSalaUseCase } from '../../src/modules/pedidos/application/use-cases/listar-pedidos-en-sala.use-case';
+import { ConsultarResumenSedeUseCase } from '../../src/modules/pedidos/application/use-cases/consultar-resumen-sede.use-case';
 import { PedidoAccess } from '../../src/modules/pedidos/application/use-cases/pedido-access';
 import type { HistorialEstadoPedido } from '../../src/modules/pedidos/domain/entities/historial-estado-pedido';
 import { Pedido } from '../../src/modules/pedidos/domain/entities/pedido.entity';
@@ -30,6 +31,7 @@ import type {
   MesaRef,
   PedidoEnSala,
 } from '../../src/modules/pedidos/domain/entities/pedido-en-sala';
+import type { ResumenSede } from '../../src/modules/pedidos/domain/entities/resumen-sede';
 import { PedidoEstado } from '../../src/modules/pedidos/domain/enums/pedido-estado.enum';
 import { PedidoModalidad } from '../../src/modules/pedidos/domain/enums/pedido-modalidad.enum';
 import {
@@ -153,6 +155,33 @@ export class InMemoryPedidoRepository implements PedidoRepository {
     );
   }
 
+  resumenDeSede(sedeId: string, desde: Date): Promise<ResumenSede> {
+    const deLaSede = [...this.registros.values()].filter(
+      (r) => r.pedido.sedeId === sedeId,
+    );
+    const enCurso = this.enCurso(sedeId);
+    const desdeHoy = (fecha: Date | null) => fecha !== null && fecha >= desde;
+    return Promise.resolve({
+      ordenesHoy: deLaSede.filter(
+        (r) =>
+          r.pedido.estado !== PedidoEstado.BORRADOR &&
+          desdeHoy(r.pedido.confirmadoEn),
+      ).length,
+      pendientes: enCurso.length,
+      entregadasHoy: deLaSede.filter(
+        (r) =>
+          r.pedido.estado === PedidoEstado.ENTREGADO &&
+          desdeHoy(r.pedido.entregadoEn),
+      ).length,
+      mesasOcupadas: new Set(
+        enCurso.flatMap((r) => (r.mesa ? [r.mesa.id] : [])),
+      ).size,
+      mesasTotales: new Set(
+        deLaSede.flatMap((r) => (r.mesa ? [r.mesa.id] : [])),
+      ).size,
+    });
+  }
+
   findCuentasPendientesDeSede(sedeId: string): Promise<CuentaPendiente[]> {
     return Promise.resolve(
       [...this.registros.values()].flatMap(
@@ -259,6 +288,7 @@ export async function crearAppPedidos(
       ConsultarHistorialPedidoUseCase,
       ListarPedidosEnCursoDeSedeUseCase,
       ListarPedidosEnSalaUseCase,
+      ConsultarResumenSedeUseCase,
       { provide: PedidosService, useValue: {} },
       { provide: PEDIDO_REPOSITORY, useValue: repo },
       { provide: PEDIDO_EVENTOS, useValue: eventos },

@@ -3,6 +3,7 @@ import { PrismaService } from '../../../../infrastructure/prisma/prisma.service'
 import { Role } from '../../../../common/enums/role.enum';
 import { HistorialEstadoPedido } from '../../domain/entities/historial-estado-pedido';
 import { Pedido } from '../../domain/entities/pedido.entity';
+import type { ResumenSede } from '../../domain/entities/resumen-sede';
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import { ESTADOS_FINALES } from '../../domain/services/pedido-estado-flujo';
 import type {
@@ -88,6 +89,51 @@ export class PrismaPedidoRepository implements PedidoRepository {
           ]
         : [],
     );
+  }
+
+  async resumenDeSede(sedeId: string, desde: Date): Promise<ResumenSede> {
+    const enCurso = {
+      locationId: sedeId,
+      status: { notIn: [PedidoEstado.BORRADOR, ...ESTADOS_FINALES] },
+    };
+    const [
+      ordenesHoy,
+      pendientes,
+      entregadasHoy,
+      mesasConPedido,
+      mesasTotales,
+    ] = await this.prisma.$transaction([
+      this.prisma.order.count({
+        where: {
+          locationId: sedeId,
+          status: { not: PedidoEstado.BORRADOR },
+          placedAt: { gte: desde },
+        },
+      }),
+      this.prisma.order.count({ where: enCurso }),
+      this.prisma.order.count({
+        where: {
+          locationId: sedeId,
+          status: PedidoEstado.ENTREGADO,
+          deliveredAt: { gte: desde },
+        },
+      }),
+      this.prisma.order.findMany({
+        where: { ...enCurso, tableId: { not: null } },
+        distinct: ['tableId'],
+        select: { tableId: true },
+      }),
+      this.prisma.diningTable.count({
+        where: { locationId: sedeId, status: 'activa' },
+      }),
+    ]);
+    return {
+      ordenesHoy,
+      pendientes,
+      entregadasHoy,
+      mesasOcupadas: mesasConPedido.length,
+      mesasTotales,
+    };
   }
 
   async restauranteDeSede(sedeId: string): Promise<string | null> {

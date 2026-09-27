@@ -158,4 +158,22 @@ describe('GP-05 recibir y gestionar pedidos en sala (e2e)', () => {
       { mesa: MESA_4, totalPendiente: 62000, pedidos: [] },
     ]);
   });
+
+  it('los indicadores del panel salen de los pedidos reales de la sede', async () => {
+    const res = await como(app, 'personal')
+      .get(`/pedidos/sede/${ID_SEDE}/resumen`)
+      .expect(200);
+
+    expect(cuerpo(res).data).toEqual({
+      ordenesHoy: 2,
+      pendientes: 0,
+      entregadasHoy: 1,
+      mesasOcupadas: 0,
+      mesasTotales: 1,
+    });
+
+    await como(app, 'personalOtraSede')
+      .get(`/pedidos/sede/${ID_SEDE}/resumen`)
+      .expect(404);
+  });
 });

@@ -21,6 +21,7 @@ import { ConsultarEstadoPedidoUseCase } from '../../application/use-cases/consul
 import { ConsultarHistorialPedidoUseCase } from '../../application/use-cases/consultar-historial-pedido.use-case';
 import { ListarPedidosEnCursoDeSedeUseCase } from '../../application/use-cases/listar-pedidos-en-curso-de-sede.use-case';
 import { ListarPedidosEnSalaUseCase } from '../../application/use-cases/listar-pedidos-en-sala.use-case';
+import { ConsultarResumenSedeUseCase } from '../../application/use-cases/consultar-resumen-sede.use-case';
 import { ROLES_GESTORES } from '../../application/use-cases/pedido-access';
 import { CambiarEstadoPedidoDto } from './cambiar-estado-pedido.dto';
 import {
@@ -40,6 +41,7 @@ export class PedidosController {
     private readonly consultarHistorial: ConsultarHistorialPedidoUseCase,
     private readonly listarEnCursoDeSede: ListarPedidosEnCursoDeSedeUseCase,
     private readonly listarEnSala: ListarPedidosEnSalaUseCase,
+    private readonly consultarResumen: ConsultarResumenSedeUseCase,
   ) {}
 
   @Post()
@@ -77,6 +79,19 @@ export class PedidosController {
       success: true,
       data: pedidos.map(toPedidoEstadoResponse),
       message: 'Pedidos en curso consultados correctamente.',
+    };
+  }
+
+  @Get('sede/:sedeId/resumen')
+  @Roles(...ROLES_GESTORES)
+  async resumenDeSede(
+    @Param('sedeId', ParseUUIDPipe) sedeId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      success: true,
+      data: await this.consultarResumen.execute(sedeId, user),
+      message: 'Resumen de la sede consultado correctamente.',
     };
   }
 

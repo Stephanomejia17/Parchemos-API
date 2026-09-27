@@ -1,6 +1,7 @@
 import { HistorialEstadoPedido } from '../entities/historial-estado-pedido';
 import { Pedido } from '../entities/pedido.entity';
 import { CuentaPendiente, PedidoEnSala } from '../entities/pedido-en-sala';
+import { ResumenSede } from '../entities/resumen-sede';
 import { PedidoEstado } from '../enums/pedido-estado.enum';
 
 export const PEDIDO_REPOSITORY = Symbol('PEDIDO_REPOSITORY');
@@ -25,6 +26,8 @@ export interface PedidoRepository {
    * (sin borradores ni cancelados), con lo que ya se abonó de cada uno.
    */
   findCuentasPendientesDeSede(sedeId: string): Promise<CuentaPendiente[]>;
+  /** GP-05: indicadores del panel de sala contados desde `desde`. */
+  resumenDeSede(sedeId: string, desde: Date): Promise<ResumenSede>;
   /** Restaurante al que pertenece la sede, o null si la sede no existe. */
   restauranteDeSede(sedeId: string): Promise<string | null>;
   /** Transiciones del pedido en orden cronologico. */
