@@ -9,7 +9,17 @@ export class ListPublicLocationsUseCase {
     private readonly locations: LocationRepository,
   ) {}
 
-  execute(categoria?: string, ordenarPor?: string, precio?: string,) {
-    return this.locations.findAllActive(categoria, ordenarPor, precio);
+  execute(
+    categoria?: string,
+    ordenarPor?: string,
+    precio?: string,
+    nombre?: string,
+  ) {
+    return this.locations.findAllActive(
+      categoria,
+      ordenarPor,
+      precio,
+      nombre,
+    );
   }
 }

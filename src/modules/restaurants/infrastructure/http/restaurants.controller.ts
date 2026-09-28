@@ -323,6 +323,7 @@ export class RestaurantsController {
       query.categoria,
       query.ordenar_por,
       query.precio,
+      query.nombre,
     );
   }
 

@@ -209,4 +209,9 @@ export class ListPublicLocationsQueryDto {
   @IsString()
   @MaxLength(50)
   precio?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  nombre?: string;
 }
