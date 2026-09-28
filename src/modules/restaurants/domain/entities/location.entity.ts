@@ -6,6 +6,12 @@ import { ScheduleSlot } from '../value-objects/schedule-slot';
 const DEFAULT_LOGO_URL = 'https://placehold.co/256x256?text=Parchemos';
 const DEFAULT_COVER_URL = 'https://placehold.co/1200x600?text=Restaurante';
 
+export interface LocationCuisineItem {
+  id: string;
+  slug: string;
+  name: string;
+}
+
 export interface LocationProps {
   id: string;
   restaurantId: string;
@@ -24,6 +30,7 @@ export interface LocationProps {
   approvedAt: Date | null;
   schedules: ScheduleSlot[];
   images: LocationImageItem[];
+  cuisines?: LocationCuisineItem[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -49,6 +56,7 @@ export class Location extends BaseEntity {
   readonly approvedAt: Date | null;
   readonly schedules: ScheduleSlot[];
   readonly images: LocationImageItem[];
+  readonly cuisines: LocationCuisineItem[];
 
   constructor(props: LocationProps) {
     super(props.id, props.createdAt, props.updatedAt);
@@ -68,6 +76,7 @@ export class Location extends BaseEntity {
     this.approvedAt = props.approvedAt;
     this.schedules = props.schedules;
     this.images = props.images;
+    this.cuisines = props.cuisines ?? [];
   }
 
   isActive(): boolean {
