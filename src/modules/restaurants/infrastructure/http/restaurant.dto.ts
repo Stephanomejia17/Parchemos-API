@@ -199,4 +199,9 @@ export class ListPublicLocationsQueryDto {
   @IsString()
   @MaxLength(500)
   categoria?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  ordenar_por?: string;
 }

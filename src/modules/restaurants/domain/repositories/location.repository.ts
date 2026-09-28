@@ -52,7 +52,10 @@ export interface LocationRepository {
   findByIdAndOwner(id: string, ownerId: string): Promise<Location | null>;
   /** Solo sedes activas: lo que puede ver un comensal (MB-01, DO-01). */
   findActiveById(id: string): Promise<Location | null>;
-  findAllActive(categoria?: string): Promise<Location[]>;
+  findAllActive(
+    categoria?: string,
+    ordenarPor?: string,
+  ): Promise<Location[]>;
   findPendingForReview(): Promise<LocationOwnerInfo[]>;
   findAllForAdmin(): Promise<LocationOwnerInfo[]>;
   addGalleryImage(locationId: string, url: string): Promise<LocationImageItem>;

@@ -93,11 +93,22 @@ export class PrismaLocationRepository implements LocationRepository {
     return row ? toLocationDomain(row) : null;
   }
 
-  async findAllActive(categoria?: string): Promise<Location[]> {
+  async findAllActive(
+    categoria?: string,
+    ordenarPor?: string,
+  ): Promise<Location[]> {
     const categorias = categoria
       ?.split(',')
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean);
+
+    const orderBy =
+      ordenarPor === 'calificacion'
+        ? [
+            { avgRating: 'desc' as const },
+            { ratingCount: 'desc' as const },
+          ]
+        : [{ updatedAt: 'desc' as const }];
 
     const rows = await this.prisma.location.findMany({
       where: {
@@ -117,7 +128,7 @@ export class PrismaLocationRepository implements LocationRepository {
           : {}),
       },
       include: locationInclude,
-      orderBy: { updatedAt: 'desc' },
+      orderBy,
     });
 
     return rows.map(toLocationDomain);
