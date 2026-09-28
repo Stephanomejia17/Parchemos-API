@@ -193,3 +193,10 @@ export class ReassignStaffLocationDto {
   @IsUUID('4', { message: 'Selecciona una sede válida.' })
   locationId!: string;
 }
+
+export class ListPublicLocationsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  categoria?: string;
+}

@@ -93,9 +93,29 @@ export class PrismaLocationRepository implements LocationRepository {
     return row ? toLocationDomain(row) : null;
   }
 
-  async findAllActive(): Promise<Location[]> {
+  async findAllActive(categoria?: string): Promise<Location[]> {
+    const categorias = categoria
+      ?.split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+
     const rows = await this.prisma.location.findMany({
-      where: { status: PrismaLocationStatus.activa },
+      where: {
+        status: PrismaLocationStatus.activa,
+        ...(categorias?.length
+          ? {
+              cuisines: {
+                some: {
+                  cuisineType: {
+                    slug: {
+                      in: categorias,
+                    },
+                  },
+                },
+              },
+            }
+          : {}),
+      },
       include: locationInclude,
       orderBy: { updatedAt: 'desc' },
     });
