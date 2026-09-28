@@ -204,4 +204,9 @@ export class ListPublicLocationsQueryDto {
   @IsString()
   @MaxLength(50)
   ordenar_por?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  precio?: string;
 }

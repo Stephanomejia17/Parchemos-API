@@ -322,6 +322,7 @@ export class RestaurantsController {
     return this.listPublicLocationsUseCase.execute(
       query.categoria,
       query.ordenar_por,
+      query.precio,
     );
   }
 

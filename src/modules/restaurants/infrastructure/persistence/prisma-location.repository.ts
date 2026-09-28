@@ -93,14 +93,16 @@ export class PrismaLocationRepository implements LocationRepository {
     return row ? toLocationDomain(row) : null;
   }
 
-  async findAllActive(
-    categoria?: string,
-    ordenarPor?: string,
-  ): Promise<Location[]> {
+  async findAllActive(categoria?: string, ordenarPor?: string, precio?: string,): Promise<Location[]> {
     const categorias = categoria
       ?.split(',')
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean);
+
+    const precios = precio
+    ?.split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 4);
 
     const orderBy =
       ordenarPor === 'calificacion'
@@ -125,6 +127,13 @@ export class PrismaLocationRepository implements LocationRepository {
                     },
                   },
                 },
+              },
+            }
+          : {}),
+        ...(precios?.length
+          ? {
+              priceRange: {
+                in: precios,
               },
             }
           : {}),
