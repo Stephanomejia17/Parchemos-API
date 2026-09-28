@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DomainError } from '../errors/domain-error';
+import { Logger } from '@nestjs/common';
 
 interface ResolvedError {
   statusCode: number;
@@ -22,10 +23,18 @@ interface ResolvedError {
  */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const { statusCode, code, message, extra } = resolve(exception);
+
+    if (statusCode >= 500) {
+      this.logger.error(
+        exception instanceof Error ? exception.stack : exception,
+      );
+    }
 
     response.status(statusCode).json({
       success: false,

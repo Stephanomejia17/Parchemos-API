@@ -42,3 +42,8 @@ export interface UpdateStaffCommand {
   fullName?: string;
   phone?: string;
 }
+
+export interface CreateLocationReviewCommand {
+  rating: number;
+  comment?: string;
+}

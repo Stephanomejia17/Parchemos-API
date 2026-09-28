@@ -5,7 +5,16 @@ import { PrismaProductoRepository } from './infrastructure/persistence/prisma-pr
 import { PRODUCT_IMAGE_STORAGE } from './domain/services/product-image-storage';
 import { SupabaseProductImageStorage } from './infrastructure/storage/supabase-product-image-storage';
 import { ProductAccess } from './application/use-cases/product-access';
-import { CreateProductUseCase, DeactivateProductUseCase, GetProductUseCase, ListProductsUseCase, SetProductFeaturedUseCase, UpdateProductUseCase, UploadProductImageUseCase } from './application/use-cases/product.use-cases';
+import {
+  CreateProductUseCase,
+  DeactivateProductUseCase,
+  GetProductUseCase,
+  ListProductsUseCase,
+  SetProductFeaturedUseCase,
+  UpdateProductUseCase,
+  UploadProductImageUseCase,
+} from './application/use-cases/product.use-cases';
+import { ListPublicLocationMenuUseCase } from './application/use-cases/list-public-location-menu.use-case';
 
 @Module({
   controllers: [ProductsController],
@@ -18,6 +27,7 @@ import { CreateProductUseCase, DeactivateProductUseCase, GetProductUseCase, List
     DeactivateProductUseCase,
     SetProductFeaturedUseCase,
     UploadProductImageUseCase,
+    ListPublicLocationMenuUseCase,
     { provide: PRODUCTO_REPOSITORY, useClass: PrismaProductoRepository },
     { provide: PRODUCT_IMAGE_STORAGE, useClass: SupabaseProductImageStorage },
   ],

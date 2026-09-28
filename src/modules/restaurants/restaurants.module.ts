@@ -3,7 +3,9 @@ import { LOCATION_REPOSITORY } from './domain/repositories/location.repository';
 import { RESTAURANT_REPOSITORY } from './domain/repositories/restaurant.repository';
 import { SCHEDULE_REPOSITORY } from './domain/repositories/schedule.repository';
 import { STAFF_REPOSITORY } from './domain/repositories/staff.repository';
+import { LOCATION_REVIEW_REPOSITORY } from './domain/repositories/location-review.repository';
 import { IMAGE_STORAGE } from './domain/services/image-storage';
+import { PrismaLocationReviewRepository } from './infrastructure/persistence/prisma-location-review.repository';
 import { PrismaLocationRepository } from './infrastructure/persistence/prisma-location.repository';
 import { PrismaRestaurantRepository } from './infrastructure/persistence/prisma-restaurant.repository';
 import { PrismaScheduleRepository } from './infrastructure/persistence/prisma-schedule.repository';
@@ -20,7 +22,9 @@ import { GetStaffDetailUseCase } from './application/use-cases/get-staff-detail.
 import { ListAllLocationsForAdminUseCase } from './application/use-cases/list-all-locations-for-admin.use-case';
 import { ListMyRestaurantsUseCase } from './application/use-cases/list-my-restaurants.use-case';
 import { ListPendingLocationsUseCase } from './application/use-cases/list-pending-locations.use-case';
+import { ListPublicLocationsUseCase } from './application/use-cases/list-public-locations.use-case';
 import { ListStaffUseCase } from './application/use-cases/list-staff.use-case';
+import { ListLocationReviewsUseCase } from './application/use-cases/list-location-reviews.use-case';
 import { PreviewLocationUseCase } from './application/use-cases/preview-location.use-case';
 import { ReassignStaffUseCase } from './application/use-cases/reassign-staff.use-case';
 import { RejectLocationUseCase } from './application/use-cases/reject-location.use-case';
@@ -32,6 +36,8 @@ import { SetStaffEnabledUseCase } from './application/use-cases/set-staff-enable
 import { UpdateLocationUseCase } from './application/use-cases/update-location.use-case';
 import { UpdateStaffUseCase } from './application/use-cases/update-staff.use-case';
 import { UploadLocationImageUseCase } from './application/use-cases/upload-location-image.use-case';
+import { CreateOrUpdateLocationReviewUseCase } from './application/use-cases/create-or-update-location-review.use-case';
+import { UpdateLocationReviewUseCase } from './application/use-cases/update-location-review.use-case';
 
 @Module({
   controllers: [RestaurantsController],
@@ -59,12 +65,20 @@ import { UploadLocationImageUseCase } from './application/use-cases/upload-locat
     UpdateStaffUseCase,
     ReassignStaffUseCase,
     SetStaffEnabledUseCase,
+    CreateOrUpdateLocationReviewUseCase,
+    UpdateLocationReviewUseCase,
+    ListLocationReviewsUseCase,
+    ListPublicLocationsUseCase,
     // Los casos de uso dependen de las interfaces del dominio, no de Prisma
     // ni de Supabase Storage directamente.
     { provide: RESTAURANT_REPOSITORY, useClass: PrismaRestaurantRepository },
     { provide: LOCATION_REPOSITORY, useClass: PrismaLocationRepository },
     { provide: SCHEDULE_REPOSITORY, useClass: PrismaScheduleRepository },
     { provide: STAFF_REPOSITORY, useClass: PrismaStaffRepository },
+    {
+      provide: LOCATION_REVIEW_REPOSITORY,
+      useClass: PrismaLocationReviewRepository,
+    },
     { provide: IMAGE_STORAGE, useClass: SupabaseImageStorage },
   ],
 })

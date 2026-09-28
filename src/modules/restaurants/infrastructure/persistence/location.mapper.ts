@@ -18,6 +18,9 @@ export type LocationRow = {
   longitude: number | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  priceRange: number | null;
+  avgRating: unknown;
+  ratingCount: number;
   status: string;
   rejectionReason: string | null;
   approvedAt: Date | null;
@@ -42,6 +45,9 @@ export function toLocationDomain(row: LocationRow): Location {
     longitude: row.longitude,
     logoUrl: row.logoUrl,
     coverUrl: row.coverUrl,
+    priceRange: row.priceRange,
+    avgRating: Number(row.avgRating),
+    ratingCount: row.ratingCount,
     status: row.status as LocationStatus,
     rejectionReason: row.rejectionReason,
     approvedAt: row.approvedAt,

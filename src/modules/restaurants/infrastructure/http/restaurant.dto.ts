@@ -14,6 +14,8 @@ import {
   Matches,
   MaxLength,
   Min,
+  Max,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -32,8 +34,9 @@ export class CreateLocationDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(2000, {
-    message: 'La descripción no puede superar 2000 caracteres.',
+  @ValidateIf((_, value) => value !== undefined)
+  @Length(20, 2000, {
+    message: 'La descripción debe tener entre 20 y 2000 caracteres.',
   })
   description?: string;
 
@@ -52,6 +55,28 @@ export class CreateLocationDto {
   longitude?: number;
 }
 
+export class CreateLocationReviewDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating!: number;
+
+  @IsOptional()
+  @IsString()
+  @Length(10, 500, {
+    message: 'El comentario debe tener entre 10 y 500 caracteres.',
+  })
+  comment?: string;
+}
+
+export class UpdateLocationReviewDto {
+  @IsString()
+  @Length(10, 500, {
+    message: 'El comentario debe tener entre 10 y 500 caracteres.',
+  })
+  comment!: string;
+}
+
 export class UpdateLocationDto {
   @IsOptional()
   @IsString()
@@ -60,8 +85,9 @@ export class UpdateLocationDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(2000, {
-    message: 'La descripción no puede superar 2000 caracteres.',
+  @ValidateIf((_, value) => value !== undefined)
+  @Length(20, 2000, {
+    message: 'La descripción debe tener entre 20 y 2000 caracteres.',
   })
   description?: string;
 

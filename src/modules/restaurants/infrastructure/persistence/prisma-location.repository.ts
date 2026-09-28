@@ -93,6 +93,16 @@ export class PrismaLocationRepository implements LocationRepository {
     return row ? toLocationDomain(row) : null;
   }
 
+  async findAllActive(): Promise<Location[]> {
+    const rows = await this.prisma.location.findMany({
+      where: { status: PrismaLocationStatus.activa },
+      include: locationInclude,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return rows.map(toLocationDomain);
+  }
+
   async findPendingForReview(): Promise<LocationOwnerInfo[]> {
     const rows = await this.prisma.location.findMany({
       where: { status: PrismaLocationStatus.pendiente_aprobacion },

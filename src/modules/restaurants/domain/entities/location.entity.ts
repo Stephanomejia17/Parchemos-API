@@ -16,6 +16,9 @@ export interface LocationProps {
   longitude: number | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  priceRange?: number | null;
+  avgRating?: number;
+  ratingCount?: number;
   status: LocationStatus;
   rejectionReason: string | null;
   approvedAt: Date | null;
@@ -38,6 +41,9 @@ export class Location extends BaseEntity {
   readonly longitude: number | null;
   readonly logoUrl: string | null;
   readonly coverUrl: string | null;
+  readonly priceRange?: number | null;
+  readonly avgRating?: number;
+  readonly ratingCount?: number;
   readonly status: LocationStatus;
   readonly rejectionReason: string | null;
   readonly approvedAt: Date | null;
@@ -54,6 +60,9 @@ export class Location extends BaseEntity {
     this.longitude = props.longitude;
     this.logoUrl = props.logoUrl;
     this.coverUrl = props.coverUrl;
+    this.priceRange = props.priceRange;
+    this.avgRating = props.avgRating;
+    this.ratingCount = props.ratingCount;
     this.status = props.status;
     this.rejectionReason = props.rejectionReason;
     this.approvedAt = props.approvedAt;

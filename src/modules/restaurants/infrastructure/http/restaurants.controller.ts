@@ -27,12 +27,15 @@ import { ApproveLocationUseCase } from '../../application/use-cases/approve-loca
 import { CreateLocationUseCase } from '../../application/use-cases/create-location.use-case';
 import { CreateRestaurantUseCase } from '../../application/use-cases/create-restaurant.use-case';
 import { CreateStaffUserUseCase } from '../../application/use-cases/create-staff-user.use-case';
+import { CreateOrUpdateLocationReviewUseCase } from '../../application/use-cases/create-or-update-location-review.use-case';
 import { GetPublicLocationProfileUseCase } from '../../application/use-cases/get-public-location-profile.use-case';
 import { GetStaffDetailUseCase } from '../../application/use-cases/get-staff-detail.use-case';
 import { ListAllLocationsForAdminUseCase } from '../../application/use-cases/list-all-locations-for-admin.use-case';
 import { ListMyRestaurantsUseCase } from '../../application/use-cases/list-my-restaurants.use-case';
 import { ListPendingLocationsUseCase } from '../../application/use-cases/list-pending-locations.use-case';
 import { ListStaffUseCase } from '../../application/use-cases/list-staff.use-case';
+import { ListLocationReviewsUseCase } from '../../application/use-cases/list-location-reviews.use-case';
+import { ListPublicLocationsUseCase } from '../../application/use-cases/list-public-locations.use-case';
 import { PreviewLocationUseCase } from '../../application/use-cases/preview-location.use-case';
 import { ReassignStaffUseCase } from '../../application/use-cases/reassign-staff.use-case';
 import { RejectLocationUseCase } from '../../application/use-cases/reject-location.use-case';
@@ -44,10 +47,14 @@ import { SetStaffEnabledUseCase } from '../../application/use-cases/set-staff-en
 import { UpdateLocationUseCase } from '../../application/use-cases/update-location.use-case';
 import { UpdateStaffUseCase } from '../../application/use-cases/update-staff.use-case';
 import { UploadLocationImageUseCase } from '../../application/use-cases/upload-location-image.use-case';
+import { UpdateLocationReviewUseCase } from '../../application/use-cases/update-location-review.use-case';
+
 import {
   CreateLocationDto,
   CreateRestaurantDto,
   CreateStaffDto,
+  CreateLocationReviewDto,
+  UpdateLocationReviewDto,
   ImageUrlDto,
   ReassignStaffLocationDto,
   RejectLocationDto,
@@ -73,6 +80,7 @@ export class RestaurantsController {
     private readonly requestLocationApproval: RequestLocationApprovalUseCase,
     private readonly listPendingLocations: ListPendingLocationsUseCase,
     private readonly listAllLocationsForAdmin: ListAllLocationsForAdminUseCase,
+    private readonly listPublicLocationsUseCase: ListPublicLocationsUseCase,
     private readonly approveLocation: ApproveLocationUseCase,
     private readonly rejectLocation: RejectLocationUseCase,
     private readonly listStaff: ListStaffUseCase,
@@ -81,6 +89,9 @@ export class RestaurantsController {
     private readonly updateStaff: UpdateStaffUseCase,
     private readonly reassignStaff: ReassignStaffUseCase,
     private readonly setStaffEnabled: SetStaffEnabledUseCase,
+    private readonly createOrUpdateLocationReview: CreateOrUpdateLocationReviewUseCase,
+    private readonly updateLocationReview: UpdateLocationReviewUseCase,
+    private readonly listLocationReviews: ListLocationReviewsUseCase,
   ) {}
 
   /** AN-01: una cuenta restaurante puede crear y administrar varias empresas. */
@@ -303,11 +314,53 @@ export class RestaurantsController {
     return this.requestLocationApproval.execute(user.id, locationId);
   }
 
+  @Public()
+  @Get('publicos')
+  listPublicLocations() {
+    return this.listPublicLocationsUseCase.execute();
+  }
+
   /** Solo las sedes aprobadas se exponen a los comensales. */
   @Public()
   @Get('publicos/:locationId')
   publicProfile(@Param('locationId') locationId: string) {
     return this.getPublicLocationProfile.execute(locationId);
+  }
+
+  @Get('publicos/:locationId/calificaciones')
+  @Public()
+  listReviews(@Param('locationId') locationId: string) {
+    return this.listLocationReviews.execute(locationId);
+  }
+
+  /** Un comensal puede calificar una sede con la que haya interactuado. */
+  @Post(':locationId/calificaciones')
+  @Roles(Role.COMENSAL)
+  createOrUpdateReview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('locationId') locationId: string,
+    @Body() dto: CreateLocationReviewDto,
+  ) {
+    return this.createOrUpdateLocationReview.execute(
+      locationId,
+      user.id,
+      dto.rating,
+      dto.comment ?? null,
+    );
+  }
+  
+  @Put('calificaciones/:reviewId')
+  @Roles(Role.COMENSAL)
+  updateReview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('reviewId') reviewId: string,
+    @Body() dto: UpdateLocationReviewDto,
+  ) {
+    return this.updateLocationReview.execute(
+      reviewId,
+      user.id,
+      dto.comment,
+    );
   }
 
   @Get('administracion/solicitudes-pendientes')
