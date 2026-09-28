@@ -108,7 +108,9 @@ export class PrismaLocationRepository implements LocationRepository {
             { avgRating: 'desc' as const },
             { ratingCount: 'desc' as const },
           ]
-        : [{ updatedAt: 'desc' as const }];
+        : ordenarPor === 'precio'
+          ? [{ priceRange: 'asc' as const }]
+          : [{ updatedAt: 'desc' as const }];
 
     const rows = await this.prisma.location.findMany({
       where: {
