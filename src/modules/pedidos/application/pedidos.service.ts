@@ -23,6 +23,7 @@ export class PedidosService {
     dinerId: string,
     locationId: string,
     items: { productId: string; quantity: number }[],
+    tableId?: string,
   ) {
     const quantities = new Map<string, number>();
     for (const item of items) {
@@ -41,6 +42,20 @@ export class PedidosService {
         select: { id: true, restaurantId: true },
       });
       if (!location) throw new NotFoundException('La sede no está disponible.');
+
+      // Corrección QR: la mesa se valida contra la sede dentro de la misma
+      // transacción, evitando asociar pedidos a otra sede o a mesas inactivas.
+      const table = tableId
+        ? await tx.diningTable.findFirst({
+            where: { id: tableId, locationId, status: 'activa' },
+            select: { id: true },
+          })
+        : null;
+      if (tableId && !table) {
+        throw new BadRequestException(
+          'La mesa no existe, está inactiva o no pertenece a la sede.',
+        );
+      }
 
       const products = await tx.product.findMany({
         where: {
@@ -83,7 +98,9 @@ export class PedidosService {
           locationId,
           restaurantId: location.restaurantId,
           dinerId,
-          fulfillment: 'para_llevar',
+          // Los pedidos provenientes del QR deben aparecer agrupados en sala.
+          tableId: table?.id,
+          fulfillment: table ? 'en_mesa' : 'para_llevar',
           status: ESTADO_INICIAL_PEDIDO,
           paymentStatus: 'pendiente',
           deliveryFee,

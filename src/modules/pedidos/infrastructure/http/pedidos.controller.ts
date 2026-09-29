@@ -53,7 +53,12 @@ export class PedidosController {
   ) {
     return {
       success: true,
-      data: await this.pedidos.create(user.id, dto.locationId, dto.items),
+      data: await this.pedidos.create(
+        user.id,
+        dto.locationId,
+        dto.items,
+        dto.tableId,
+      ),
       message: 'Pedido registrado correctamente.',
     };
   }
