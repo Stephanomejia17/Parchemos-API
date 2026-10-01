@@ -62,7 +62,7 @@ export class PrismaLocationReviewRepository
     return reservation !== null;
   }
 
-  async hasDeliveredOrder(
+  async hasPlacedOrder(
     locationId: string,
     userId: string,
   ): Promise<boolean> {
@@ -70,7 +70,10 @@ export class PrismaLocationReviewRepository
       where: {
         locationId,
         dinerId: userId,
-        status: 'entregado',
+        // Los pedidos creados en esta versión quedan en "pendiente" y aún
+        // no existe un flujo para avanzar su estado hasta "entregado".
+        // Cuenta el pedido enviado; no habilita borradores ni cancelados.
+        status: { notIn: ['borrador', 'cancelado'] },
       },
       select: { id: true },
     });

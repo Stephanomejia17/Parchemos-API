@@ -31,7 +31,7 @@ export class CreateOrUpdateLocationReviewUseCase {
       userId,
     );
 
-    const hasOrder = await this.reviews.hasDeliveredOrder(
+    const hasOrder = await this.reviews.hasPlacedOrder(
       locationId,
       userId,
     );

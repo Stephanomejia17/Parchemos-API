@@ -31,7 +31,7 @@ export interface LocationReviewRepository {
     userId: string,
   ): Promise<boolean>;
 
-  hasDeliveredOrder(
+  hasPlacedOrder(
     locationId: string,
     userId: string,
   ): Promise<boolean>;
