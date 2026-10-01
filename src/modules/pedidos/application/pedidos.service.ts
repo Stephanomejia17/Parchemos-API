@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 @Injectable()
@@ -68,8 +70,10 @@ export class PedidosService {
       // Debe coincidir con la tarifa de servicio mostrada en la pantalla de pago.
       const deliveryFee = Math.round(subtotal * 0.1);
 
-      const order = await tx.order.create({
+      const orderId = randomUUID();
+      await tx.order.create({
         data: {
+          id: orderId,
           locationId,
           restaurantId: location.restaurantId,
           dinerId,
@@ -81,10 +85,15 @@ export class PedidosService {
           items: { create: orderItems },
         },
       });
-      const savedOrder = await tx.order.findUniqueOrThrow({
-        where: { id: order.id },
+      const savedOrder = await tx.order.findUnique({
+        where: { id: orderId },
         include: { items: true, location: { select: { name: true } } },
       });
+      if (!savedOrder) {
+        throw new InternalServerErrorException(
+          'No se pudo confirmar que el pedido quedara guardado. Inténtalo de nuevo.',
+        );
+      }
 
       return {
         ...savedOrder,
