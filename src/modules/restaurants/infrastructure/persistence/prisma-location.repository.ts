@@ -93,11 +93,68 @@ export class PrismaLocationRepository implements LocationRepository {
     return row ? toLocationDomain(row) : null;
   }
 
-  async findAllActive(): Promise<Location[]> {
+  async findAllActive(
+    categoria?: string,
+    ordenarPor?: string,
+    precio?: string,
+    nombre?: string,
+  ): Promise<Location[]> {
+    const categorias = categoria
+      ?.split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+
+    const precios = precio
+    ?.split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 4);
+
+    const nombreNormalizado = nombre?.trim();
+
+    const orderBy =
+      ordenarPor === 'calificacion'
+        ? [
+            { avgRating: 'desc' as const },
+            { ratingCount: 'desc' as const },
+          ]
+        : ordenarPor === 'precio'
+          ? [{ priceRange: 'asc' as const }]
+          : [{ updatedAt: 'desc' as const }];
+
     const rows = await this.prisma.location.findMany({
-      where: { status: PrismaLocationStatus.activa },
+      where: {
+        status: PrismaLocationStatus.activa,
+        ...(nombreNormalizado
+          ? {
+              name: {
+                contains: nombreNormalizado,
+                mode: 'insensitive' as const,
+              },
+            }
+          : {}),
+        ...(categorias?.length
+          ? {
+              cuisines: {
+                some: {
+                  cuisineType: {
+                    slug: {
+                      in: categorias,
+                    },
+                  },
+                },
+              },
+            }
+          : {}),
+        ...(precios?.length
+          ? {
+              priceRange: {
+                in: precios,
+              },
+            }
+          : {}),
+      },
       include: locationInclude,
-      orderBy: { updatedAt: 'desc' },
+      orderBy,
     });
 
     return rows.map(toLocationDomain);
