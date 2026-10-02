@@ -17,6 +17,7 @@ import { ResenasModule } from './modules/resenas/resenas.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
 import { RestaurantsModule } from './modules/restaurants/restaurants.module';
 import { ProductsModule } from './modules/products/products.module';
+import { MesasModule } from './modules/mesas/mesas.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ProductsModule } from './modules/products/products.module';
     AuthModule,
     RestaurantsModule,
     ProductsModule,
+    MesasModule,
     PedidosModule,
     ReservasModule,
     ResenasModule,

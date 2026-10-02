@@ -44,6 +44,13 @@ export interface LocationOwnerInfo {
   };
 }
 
+export interface PublicLocation extends Location {
+  restaurant: {
+    id: string;
+    businessName: string;
+  };
+}
+
 export interface LocationRepository {
   create(data: CreateLocationData): Promise<Location>;
   update(id: string, data: UpdateLocationData): Promise<Location>;
@@ -57,7 +64,7 @@ export interface LocationRepository {
     ordenarPor?: string,
     precio?: string,
     nombre?: string,
-  ): Promise<Location[]>;
+  ): Promise<PublicLocation[]>;
   findPendingForReview(): Promise<LocationOwnerInfo[]>;
   findAllForAdmin(): Promise<LocationOwnerInfo[]>;
   addGalleryImage(locationId: string, url: string): Promise<LocationImageItem>;

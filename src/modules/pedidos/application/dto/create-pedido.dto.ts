@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsInt,
+  IsOptional,
   IsUUID,
   Max,
   Min,
@@ -23,6 +24,10 @@ export class CreatePedidoItemDto {
 export class CreatePedidoDto {
   @IsUUID()
   locationId!: string;
+
+  @IsUUID()
+  @IsOptional()
+  tableId?: string;
 
   @IsArray()
   @ArrayMinSize(1)

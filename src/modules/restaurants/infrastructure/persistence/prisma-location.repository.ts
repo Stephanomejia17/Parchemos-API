@@ -5,6 +5,7 @@ import { Location } from '../../domain/entities/location.entity';
 import {
   CreateLocationData,
   LocationOwnerInfo,
+  PublicLocation,
   LocationRepository,
   UpdateLocationData,
 } from '../../domain/repositories/location.repository';
@@ -98,7 +99,7 @@ export class PrismaLocationRepository implements LocationRepository {
     ordenarPor?: string,
     precio?: string,
     nombre?: string,
-  ): Promise<Location[]> {
+  ): Promise<PublicLocation[]> {
     const categorias = categoria
       ?.split(',')
       .map((value) => value.trim().toLowerCase())
@@ -153,11 +154,16 @@ export class PrismaLocationRepository implements LocationRepository {
             }
           : {}),
       },
-      include: locationInclude,
+      include: {
+        ...locationInclude,
+        restaurant: { select: { id: true, businessName: true } },
+      },
       orderBy,
     });
 
-    return rows.map(toLocationDomain);
+    return rows.map((row) =>
+      Object.assign(toLocationDomain(row), { restaurant: row.restaurant }),
+    );
   }
 
   async findPendingForReview(): Promise<LocationOwnerInfo[]> {
