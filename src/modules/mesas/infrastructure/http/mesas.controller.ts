@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -27,6 +28,7 @@ import type { MesaPublicUrlBuilder } from '../../domain/services/mesa-qr';
 import { CreateMesaDto } from './create-mesa.dto';
 import { toMesaResponse } from './mesa.presenter';
 import { UpdateMesaDto } from './update-mesa.dto';
+import { PublicMesaByCodeDto } from './public-mesa-by-code.dto';
 
 @Controller('mesas')
 export class MesasController {
@@ -102,6 +104,12 @@ export class MesasController {
       'Cache-Control': 'no-store',
     });
     response.send(await this.generateMesaQr.execute(tableId));
+  }
+
+  @Public()
+  @Get('public-by-code')
+  publicByCode(@Query() query: PublicMesaByCodeDto) {
+    return this.getPublicMesa.executeByCode(query.locationId, query.code);
   }
 
   @Public()

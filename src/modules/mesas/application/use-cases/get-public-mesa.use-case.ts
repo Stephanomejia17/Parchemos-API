@@ -12,6 +12,17 @@ export class GetPublicMesaUseCase {
 
   async execute(tableId: string) {
     const result = await this.mesas.findPublicById(tableId);
+    return this.toPublicResponse(result);
+  }
+
+  async executeByCode(locationId: string, code: string) {
+    const result = await this.mesas.findPublicByCode(locationId, code);
+    return this.toPublicResponse(result);
+  }
+
+  private toPublicResponse(
+    result: Awaited<ReturnType<MesaRepository['findPublicById']>>,
+  ) {
     if (!result || result.mesa.status !== MesaStatus.ACTIVA) {
       throw new NotFoundError(
         'La mesa no está disponible para recibir pedidos.',

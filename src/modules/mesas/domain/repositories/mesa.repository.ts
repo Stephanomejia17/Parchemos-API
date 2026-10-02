@@ -29,5 +29,6 @@ export interface MesaRepository {
   updateStatus(tableId: string, status: MesaStatus): Promise<Mesa>;
   update(tableId: string, data: UpdateMesaData): Promise<Mesa>;
   findPublicById(tableId: string): Promise<PublicMesaDetails | null>;
+  findPublicByCode(locationId: string, code: string): Promise<PublicMesaDetails | null>;
   findById(tableId: string): Promise<Mesa | null>;
 }

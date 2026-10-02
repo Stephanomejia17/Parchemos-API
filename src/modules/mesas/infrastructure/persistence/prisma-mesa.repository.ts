@@ -103,6 +103,26 @@ export class PrismaMesaRepository implements MesaRepository {
     };
   }
 
+  async findPublicByCode(
+    locationId: string,
+    code: string,
+  ): Promise<PublicMesaDetails | null> {
+    const row = await this.prisma.diningTable.findFirst({
+      where: { locationId, code },
+      include: {
+        location: {
+          include: { restaurant: { select: { id: true, businessName: true } } },
+        },
+      },
+    });
+    if (!row) return null;
+    return {
+      mesa: toMesaDomain(row),
+      restaurantId: row.location.restaurant.id,
+      restaurantName: row.location.restaurant.businessName,
+    };
+  }
+
   async findById(tableId: string): Promise<Mesa | null> {
     const row = await this.prisma.diningTable.findUnique({
       where: { id: tableId },

@@ -13,3 +13,4 @@ export class MesaPublicUrlBuilder implements MesaPublicUrlBuilderPort {
     return `${base}/pedido?mesa=${encodeURIComponent(tableId)}`;
   }
 }
+  
