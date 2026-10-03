@@ -1,15 +1,25 @@
 import {
   BadRequestException,
+  Inject,
   InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PEDIDO_REPOSITORY } from '../domain/repositories/pedido.repository';
+import type { PedidoRepository } from '../domain/repositories/pedido.repository';
+import { ESTADO_INICIAL_PEDIDO } from '../domain/services/pedido-estado-flujo';
+import { PEDIDO_EVENTOS } from '../domain/services/pedido-eventos';
+import type { PedidoEventos } from '../domain/services/pedido-eventos';
 
 @Injectable()
 export class PedidosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PEDIDO_REPOSITORY) private readonly pedidos: PedidoRepository,
+    @Inject(PEDIDO_EVENTOS) private readonly eventos: PedidoEventos,
+  ) {}
 
   async create(
     dinerId: string,
@@ -28,7 +38,7 @@ export class PedidosService {
       throw new BadRequestException('La cantidad máxima por producto es 100.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const pedido = await this.prisma.$transaction(async (tx) => {
       const location = await tx.location.findFirst({
         where: { id: locationId, status: 'activa' },
         select: { id: true, restaurantId: true },
@@ -92,12 +102,18 @@ export class PedidosService {
           dinerId,
           tableId: table?.id,
           fulfillment: table ? 'en_mesa' : 'para_llevar',
-          status: 'pendiente',
+          status: ESTADO_INICIAL_PEDIDO,
           paymentStatus: 'pendiente',
           deliveryFee,
           placedAt: new Date(),
           items: { create: orderItems },
         },
+      });
+      // GP-08 CA6: el trigger orders_log_status crea el primer registro del
+      // historial; queda a nombre del comensal que confirmó el pedido.
+      await tx.orderStatusHistory.updateMany({
+        where: { orderId, changedById: null },
+        data: { changedById: dinerId },
       });
       const savedOrder = await tx.order.findUnique({
         where: { id: orderId },
@@ -122,6 +138,11 @@ export class PedidosService {
         })),
       };
     });
+
+    // GP-05 CA1: el personal de la sede ve el pedido nuevo sin recargar.
+    const recibido = await this.pedidos.findById(pedido.id);
+    if (recibido) await this.eventos.pedidoRecibido(recibido);
+    return pedido;
   }
 
   async listMine(dinerId: string) {
