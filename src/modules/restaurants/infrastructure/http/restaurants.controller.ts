@@ -355,7 +355,7 @@ export class RestaurantsController {
       dto.comment ?? null,
     );
   }
-  
+
   @Put('calificaciones/:reviewId')
   @Roles(Role.COMENSAL)
   updateReview(
@@ -366,6 +366,7 @@ export class RestaurantsController {
     return this.updateLocationReview.execute(
       reviewId,
       user.id,
+      dto.rating,
       dto.comment,
     );
   }
