@@ -6,6 +6,11 @@ export const locationInclude = {
     orderBy: [{ dayOfWeek: 'asc' as const }, { startsAt: 'asc' as const }],
   },
   images: { orderBy: { createdAt: 'asc' as const } },
+  cuisines: {
+    include: {
+      cuisineType: true,
+    },
+  },
 };
 
 export type LocationRow = {
@@ -32,6 +37,13 @@ export type LocationRow = {
     endsAt: Date | string;
   }[];
   images: { id: string; url: string }[];
+  cuisines: {
+    cuisineType: {
+      id: string;
+      slug: string;
+      name: string;
+    };
+  }[];
 };
 
 export function toLocationDomain(row: LocationRow): Location {
@@ -57,6 +69,11 @@ export function toLocationDomain(row: LocationRow): Location {
       endsAt: formatTime(schedule.endsAt),
     })),
     images: row.images,
+    cuisines: row.cuisines.map(({ cuisineType }) => ({
+      id: cuisineType.id,
+      slug: cuisineType.slug,
+      name: cuisineType.name,
+    })),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });

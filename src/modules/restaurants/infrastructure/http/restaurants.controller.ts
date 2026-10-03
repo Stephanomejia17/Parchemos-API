@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -61,6 +62,7 @@ import {
   ReplaceSchedulesDto,
   UpdateLocationDto,
   UpdateStaffDto,
+  ListPublicLocationsQueryDto,
 } from './restaurant.dto';
 
 @Controller('restaurantes')
@@ -316,8 +318,13 @@ export class RestaurantsController {
 
   @Public()
   @Get('publicos')
-  listPublicLocations() {
-    return this.listPublicLocationsUseCase.execute();
+  listPublicLocations(@Query() query: ListPublicLocationsQueryDto) {
+    return this.listPublicLocationsUseCase.execute(
+      query.categoria,
+      query.ordenar_por,
+      query.precio,
+      query.nombre,
+    );
   }
 
   /** Solo las sedes aprobadas se exponen a los comensales. */
