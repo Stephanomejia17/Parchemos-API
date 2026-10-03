@@ -32,3 +32,4 @@ export interface MesaRepository {
   findPublicByCode(locationId: string, code: string): Promise<PublicMesaDetails | null>;
   findById(tableId: string): Promise<Mesa | null>;
 }
+

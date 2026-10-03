@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   Inject,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PEDIDO_REPOSITORY } from '../domain/repositories/pedido.repository';
 import type { PedidoRepository } from '../domain/repositories/pedido.repository';
@@ -43,8 +45,6 @@ export class PedidosService {
       });
       if (!location) throw new NotFoundException('La sede no está disponible.');
 
-      // Corrección QR: la mesa se valida contra la sede dentro de la misma
-      // transacción, evitando asociar pedidos a otra sede o a mesas inactivas.
       const table = tableId
         ? await tx.diningTable.findFirst({
             where: { id: tableId, locationId, status: 'activa' },
@@ -93,12 +93,13 @@ export class PedidosService {
       // Debe coincidir con la tarifa de servicio mostrada en la pantalla de pago.
       const deliveryFee = Math.round(subtotal * 0.1);
 
-      const order = await tx.order.create({
+      const orderId = randomUUID();
+      await tx.order.create({
         data: {
+          id: orderId,
           locationId,
           restaurantId: location.restaurantId,
           dinerId,
-          // Los pedidos provenientes del QR deben aparecer agrupados en sala.
           tableId: table?.id,
           fulfillment: table ? 'en_mesa' : 'para_llevar',
           status: ESTADO_INICIAL_PEDIDO,
@@ -111,13 +112,18 @@ export class PedidosService {
       // GP-08 CA6: el trigger orders_log_status crea el primer registro del
       // historial; queda a nombre del comensal que confirmó el pedido.
       await tx.orderStatusHistory.updateMany({
-        where: { orderId: order.id, changedById: null },
+        where: { orderId, changedById: null },
         data: { changedById: dinerId },
       });
-      const savedOrder = await tx.order.findUniqueOrThrow({
-        where: { id: order.id },
+      const savedOrder = await tx.order.findUnique({
+        where: { id: orderId },
         include: { items: true, location: { select: { name: true } } },
       });
+      if (!savedOrder) {
+        throw new InternalServerErrorException(
+          'No se pudo confirmar que el pedido quedara guardado. Inténtalo de nuevo.',
+        );
+      }
 
       return {
         ...savedOrder,

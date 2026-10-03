@@ -6,7 +6,7 @@ import { ValidationError } from '../../../../common/errors/validation-error';
 
 export interface CreateMesaCommand {
   code: string;
-  capacity: number;
+  capacity?: number;
 }
 
 @Injectable()
@@ -35,7 +35,7 @@ export class CreateMesaUseCase {
     return this.mesas.create({
       locationId,
       code: command.code.trim(),
-      capacity: command.capacity,
+      capacity: command.capacity ?? 1,
     });
   }
 }

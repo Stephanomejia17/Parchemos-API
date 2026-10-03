@@ -8,3 +8,4 @@ export interface MesaQrGenerator {
 export interface MesaPublicUrlBuilder {
   build(tableId: string): string;
 }
+

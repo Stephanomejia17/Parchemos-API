@@ -25,10 +25,6 @@ export class CreatePedidoDto {
   @IsUUID()
   locationId!: string;
 
-  /**
-   * Opcional para pedidos normales; cuando viene del QR identifica la mesa
-   * activa a la que debe asociarse el pedido.
-   */
   @IsUUID()
   @IsOptional()
   tableId?: string;

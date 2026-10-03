@@ -70,11 +70,18 @@ export class CreateLocationReviewDto {
 }
 
 export class UpdateLocationReviewDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+
+  @IsOptional()
   @IsString()
   @Length(10, 500, {
     message: 'El comentario debe tener entre 10 y 500 caracteres.',
   })
-  comment!: string;
+  comment?: string | null;
 }
 
 export class UpdateLocationDto {

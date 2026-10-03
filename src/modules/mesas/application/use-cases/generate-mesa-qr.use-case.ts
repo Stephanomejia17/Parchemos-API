@@ -32,3 +32,4 @@ export class GenerateMesaQrUseCase {
     return this.qr.generatePng(this.urls.build(mesa.id));
   }
 }
+

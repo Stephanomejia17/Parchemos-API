@@ -1,6 +1,4 @@
-export const LOCATION_REVIEW_REPOSITORY = Symbol(
-  'LOCATION_REVIEW_REPOSITORY',
-);
+export const LOCATION_REVIEW_REPOSITORY = Symbol('LOCATION_REVIEW_REPOSITORY');
 
 export interface LocationReviewData {
   id: string;
@@ -12,6 +10,22 @@ export interface LocationReviewData {
   editedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Datos mínimos y públicos del autor; nunca incluye su correo. */
+  author?: {
+    fullName: string;
+    photoUrl: string | null;
+  };
+}
+
+export interface LocationReviewSummary {
+  average: number;
+  total: number;
+  distribution: Record<1 | 2 | 3 | 4 | 5, number>;
+}
+
+export interface LocationReviewListData {
+  reviews: LocationReviewData[];
+  summary: LocationReviewSummary;
 }
 
 export interface LocationReviewRepository {
@@ -22,19 +36,11 @@ export interface LocationReviewRepository {
 
   findById(id: string): Promise<LocationReviewData | null>;
 
-  findPublishedByLocation(
-    locationId: string,
-  ): Promise<LocationReviewData[]>;
+  findPublishedByLocation(locationId: string): Promise<LocationReviewListData>;
 
-  hasCompletedReservation(
-    locationId: string,
-    userId: string,
-  ): Promise<boolean>;
+  hasCompletedReservation(locationId: string, userId: string): Promise<boolean>;
 
-  hasDeliveredOrder(
-    locationId: string,
-    userId: string,
-  ): Promise<boolean>;
+  hasPlacedOrder(locationId: string, userId: string): Promise<boolean>;
 
   upsert(
     locationId: string,
@@ -45,6 +51,7 @@ export interface LocationReviewRepository {
 
   updateComment(
     reviewId: string,
-    comment: string,
+    rating: number,
+    comment: string | null,
   ): Promise<LocationReviewData>;
 }

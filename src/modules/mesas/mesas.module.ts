@@ -28,3 +28,4 @@ import { QrCodeGenerator } from './infrastructure/qr/qrcode-generator';
   ],
 })
 export class MesasModule {}
+

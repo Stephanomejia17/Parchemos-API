@@ -9,3 +9,4 @@ export class UpdateMesaDto {
   @IsOptional() @IsInt() @IsPositive() @Max(50)
   capacity?: number;
 }
+

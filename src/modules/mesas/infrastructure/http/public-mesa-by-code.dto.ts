@@ -9,3 +9,4 @@ export class PublicMesaByCodeDto {
   })
   code!: string;
 }
+

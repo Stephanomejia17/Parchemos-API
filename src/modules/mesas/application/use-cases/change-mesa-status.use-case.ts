@@ -22,3 +22,4 @@ export class ChangeMesaStatusUseCase {
       : this.mesas.update(table.id, { ...data, code: data.code?.trim() });
   }
 }
+

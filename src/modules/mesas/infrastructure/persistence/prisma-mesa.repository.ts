@@ -130,3 +130,4 @@ export class PrismaMesaRepository implements MesaRepository {
     return row ? toMesaDomain(row) : null;
   }
 }
+

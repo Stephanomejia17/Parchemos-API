@@ -11,3 +11,4 @@ export function toMesaResponse(mesa: Mesa, urls: MesaPublicUrlBuilder) {
     qrImageUrl: `/api/mesas/${mesa.id}/qr`,
   };
 }
+

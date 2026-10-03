@@ -21,3 +21,4 @@ export function toMesaDomain(row: MesaPersistenceRow): Mesa {
     qrToken: row.qrToken,
   });
 }
+

@@ -19,3 +19,4 @@ export class ListMesasUseCase {
     return this.mesas.listByLocation(locationId);
   }
 }
+
