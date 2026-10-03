@@ -3,13 +3,23 @@ import { PrismaService } from '../../../../infrastructure/prisma/prisma.service'
 import { Role } from '../../../../common/enums/role.enum';
 import { HistorialEstadoPedido } from '../../domain/entities/historial-estado-pedido';
 import { Pedido } from '../../domain/entities/pedido.entity';
+import type { ResumenSede } from '../../domain/entities/resumen-sede';
 import { PedidoEstado } from '../../domain/enums/pedido-estado.enum';
 import { ESTADOS_FINALES } from '../../domain/services/pedido-estado-flujo';
 import type {
   CambioEstadoPedido,
   PedidoRepository,
 } from '../../domain/repositories/pedido.repository';
-import { PEDIDO_SELECT, toPedidoDomain } from './pedido.mapper';
+import type {
+  CuentaPendiente,
+  PedidoEnSala,
+} from '../../domain/entities/pedido-en-sala';
+import {
+  PEDIDO_EN_SALA_SELECT,
+  PEDIDO_SELECT,
+  toPedidoDomain,
+  toPedidoEnSala,
+} from './pedido.mapper';
 
 @Injectable()
 export class PrismaPedidoRepository implements PedidoRepository {
@@ -34,6 +44,96 @@ export class PrismaPedidoRepository implements PedidoRepository {
       select: PEDIDO_SELECT,
     });
     return rows.map(toPedidoDomain);
+  }
+
+  async findEnSalaDeSede(sedeId: string): Promise<PedidoEnSala[]> {
+    const rows = await this.prisma.order.findMany({
+      where: {
+        locationId: sedeId,
+        status: { notIn: [PedidoEstado.BORRADOR, ...ESTADOS_FINALES] },
+      },
+      orderBy: { placedAt: 'asc' },
+      take: 200,
+      select: PEDIDO_EN_SALA_SELECT,
+    });
+    return rows.map(toPedidoEnSala);
+  }
+
+  async findCuentasPendientesDeSede(
+    sedeId: string,
+  ): Promise<CuentaPendiente[]> {
+    const rows = await this.prisma.order.findMany({
+      where: {
+        locationId: sedeId,
+        tableId: { not: null },
+        status: { notIn: [PedidoEstado.BORRADOR, PedidoEstado.CANCELADO] },
+        paymentStatus: { in: ['pendiente', 'parcial'] },
+      },
+      select: {
+        total: true,
+        table: { select: { id: true, code: true } },
+        payments: { where: { status: 'aprobado' }, select: { amount: true } },
+      },
+    });
+    return rows.flatMap((row) =>
+      row.table
+        ? [
+            {
+              mesa: { id: row.table.id, codigo: row.table.code },
+              total: row.total.toNumber(),
+              pagado: row.payments.reduce(
+                (suma, pago) => suma + pago.amount.toNumber(),
+                0,
+              ),
+            },
+          ]
+        : [],
+    );
+  }
+
+  async resumenDeSede(sedeId: string, desde: Date): Promise<ResumenSede> {
+    const enCurso = {
+      locationId: sedeId,
+      status: { notIn: [PedidoEstado.BORRADOR, ...ESTADOS_FINALES] },
+    };
+    const [
+      ordenesHoy,
+      pendientes,
+      entregadasHoy,
+      mesasConPedido,
+      mesasTotales,
+    ] = await this.prisma.$transaction([
+      this.prisma.order.count({
+        where: {
+          locationId: sedeId,
+          status: { not: PedidoEstado.BORRADOR },
+          placedAt: { gte: desde },
+        },
+      }),
+      this.prisma.order.count({ where: enCurso }),
+      this.prisma.order.count({
+        where: {
+          locationId: sedeId,
+          status: PedidoEstado.ENTREGADO,
+          deliveredAt: { gte: desde },
+        },
+      }),
+      this.prisma.order.findMany({
+        where: { ...enCurso, tableId: { not: null } },
+        distinct: ['tableId'],
+        select: { tableId: true },
+      }),
+      this.prisma.diningTable.count({
+        where: { locationId: sedeId, status: 'activa' },
+      }),
+    ]);
+    return {
+      ordenesHoy,
+      pendientes,
+      entregadasHoy,
+      mesasOcupadas: mesasConPedido.length,
+      mesasTotales,
+    };
   }
 
   async restauranteDeSede(sedeId: string): Promise<string | null> {

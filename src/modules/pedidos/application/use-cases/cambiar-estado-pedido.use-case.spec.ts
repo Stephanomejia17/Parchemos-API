@@ -4,6 +4,7 @@ import { CambiarEstadoPedidoUseCase } from './cambiar-estado-pedido.use-case';
 import { PedidoAccess } from './pedido-access';
 import {
   makePedido,
+  mockPedidoEventos,
   mockPedidoRepository,
   PedidoRepositoryMocks,
 } from './pedido.test-helpers';
@@ -15,7 +16,7 @@ function setup(overrides: Partial<PedidoRepositoryMocks> = {}) {
     esPersonalActivoDeSede: jest.fn().mockResolvedValue(true),
     ...overrides,
   });
-  const eventos = { estadoActualizado: jest.fn().mockResolvedValue(undefined) };
+  const eventos = mockPedidoEventos();
   const useCase = new CambiarEstadoPedidoUseCase(
     new PedidoAccess(repo),
     repo,

@@ -6,6 +6,8 @@ import { ValidationError } from '../../../../common/errors/validation-error';
 import { Pedido } from '../../domain/entities/pedido.entity';
 import { PEDIDO_REPOSITORY } from '../../domain/repositories/pedido.repository';
 import type { PedidoRepository } from '../../domain/repositories/pedido.repository';
+import { PEDIDO_EVENTOS } from '../../domain/services/pedido-eventos';
+import type { PedidoEventos } from '../../domain/services/pedido-eventos';
 
 /**
  * GP-08 CA1: al confirmar el carrito, el pedido recibe el estado inicial del
@@ -15,6 +17,7 @@ import type { PedidoRepository } from '../../domain/repositories/pedido.reposito
 export class ConfirmarPedidoUseCase {
   constructor(
     @Inject(PEDIDO_REPOSITORY) private readonly pedidos: PedidoRepository,
+    @Inject(PEDIDO_EVENTOS) private readonly eventos: PedidoEventos,
   ) {}
 
   async execute(pedidoId: string, comensalId: string): Promise<Pedido> {
@@ -46,6 +49,8 @@ export class ConfirmarPedidoUseCase {
         'ORDER_STATUS_CHANGED',
       );
     }
+    // GP-05 CA1: el personal de la sede ve el pedido nuevo sin recargar.
+    await this.eventos.pedidoRecibido(pedido);
     return pedido;
   }
 }

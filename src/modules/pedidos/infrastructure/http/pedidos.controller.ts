@@ -20,9 +20,14 @@ import { ConfirmarPedidoUseCase } from '../../application/use-cases/confirmar-pe
 import { ConsultarEstadoPedidoUseCase } from '../../application/use-cases/consultar-estado-pedido.use-case';
 import { ConsultarHistorialPedidoUseCase } from '../../application/use-cases/consultar-historial-pedido.use-case';
 import { ListarPedidosEnCursoDeSedeUseCase } from '../../application/use-cases/listar-pedidos-en-curso-de-sede.use-case';
+import { ListarPedidosEnSalaUseCase } from '../../application/use-cases/listar-pedidos-en-sala.use-case';
+import { ConsultarResumenSedeUseCase } from '../../application/use-cases/consultar-resumen-sede.use-case';
 import { ROLES_GESTORES } from '../../application/use-cases/pedido-access';
 import { CambiarEstadoPedidoDto } from './cambiar-estado-pedido.dto';
-import { toPedidoEstadoResponse } from './pedido.presenter';
+import {
+  toMesaConPedidosResponse,
+  toPedidoEstadoResponse,
+} from './pedido.presenter';
 
 const ROLES_LECTORES = [Role.COMENSAL, ...ROLES_GESTORES];
 
@@ -35,6 +40,8 @@ export class PedidosController {
     private readonly cambiarEstado: CambiarEstadoPedidoUseCase,
     private readonly consultarHistorial: ConsultarHistorialPedidoUseCase,
     private readonly listarEnCursoDeSede: ListarPedidosEnCursoDeSedeUseCase,
+    private readonly listarEnSala: ListarPedidosEnSalaUseCase,
+    private readonly consultarResumen: ConsultarResumenSedeUseCase,
   ) {}
 
   @Post()
@@ -77,6 +84,33 @@ export class PedidosController {
       success: true,
       data: pedidos.map(toPedidoEstadoResponse),
       message: 'Pedidos en curso consultados correctamente.',
+    };
+  }
+
+  @Get('sede/:sedeId/resumen')
+  @Roles(...ROLES_GESTORES)
+  async resumenDeSede(
+    @Param('sedeId', ParseUUIDPipe) sedeId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      success: true,
+      data: await this.consultarResumen.execute(sedeId, user),
+      message: 'Resumen de la sede consultado correctamente.',
+    };
+  }
+
+  @Get('sede/:sedeId/mesas')
+  @Roles(...ROLES_GESTORES)
+  async enSalaPorMesa(
+    @Param('sedeId', ParseUUIDPipe) sedeId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const mesas = await this.listarEnSala.execute(sedeId, user);
+    return {
+      success: true,
+      data: mesas.map(toMesaConPedidosResponse),
+      message: 'Pedidos en sala consultados correctamente.',
     };
   }
 
