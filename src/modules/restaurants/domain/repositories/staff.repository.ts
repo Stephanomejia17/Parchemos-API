@@ -1,4 +1,5 @@
 import { StaffMember } from '../entities/staff-member.entity';
+import { StaffSubRole } from '../../../../common/enums/staff-sub-role.enum';
 
 export const STAFF_REPOSITORY = Symbol('STAFF_REPOSITORY');
 
@@ -8,12 +9,14 @@ export interface CreateStaffData {
   email: string;
   fullName: string;
   phone: string | null;
+  subRole: StaffSubRole;
   locationId: string;
 }
 
 export interface UpdateStaffProfileData {
   fullName?: string;
   phone?: string | null;
+  subRole?: StaffSubRole;
 }
 
 export interface StaffRepository {

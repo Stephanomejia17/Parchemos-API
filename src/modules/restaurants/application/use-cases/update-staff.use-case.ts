@@ -28,6 +28,9 @@ export class UpdateStaffUseCase {
       ...(command.phone !== undefined
         ? { phone: command.phone.trim() || null }
         : {}),
+      ...(command.subRole !== undefined
+        ? { subRole: command.subRole }
+        : {}),
     });
   }
 }

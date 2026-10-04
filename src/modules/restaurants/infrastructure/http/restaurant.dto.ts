@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEmail,
+  IsEnum,
   IsInt,
   IsLatitude,
   IsLongitude,
@@ -18,6 +19,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { StaffSubRole } from '../../../../common/enums/staff-sub-role.enum';
 
 export class CreateRestaurantDto {
   @IsString()
@@ -172,6 +174,9 @@ export class CreateStaffDto {
   @IsUUID('4', { message: 'Selecciona una sede válida.' })
   locationId!: string;
 
+  @IsEnum(StaffSubRole)
+  subRole!: StaffSubRole;
+
   // El restaurante define la contraseña inicial y la comunica al empleado
   // por su canal seguro hasta que se integre el proveedor de correo.
   @IsString()
@@ -194,6 +199,10 @@ export class UpdateStaffDto {
   @IsString()
   @MaxLength(30)
   phone?: string;
+
+  @IsOptional()
+  @IsEnum(StaffSubRole)
+  subRole?: StaffSubRole;
 }
 
 export class ReassignStaffLocationDto {

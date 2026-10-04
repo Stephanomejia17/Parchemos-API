@@ -43,6 +43,14 @@ enum UserRole {
   @@map("user_role")
 }
 
+enum StaffSubRole {
+  mesero
+  caja
+  cocinero
+
+  @@map("staff_sub_role")
+}
+
 /// Estado de la cuenta:
 /// - pendiente_aprobacion: restaurante recien registrado (GU-01 Esc. 2)
 /// - activa: puede iniciar sesion (GU-02 Esc. 1)
@@ -686,7 +694,8 @@ model RestaurantStaff {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   locationId String    @map("location_id") @db.Uuid
   location   Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  position   String?
+  /// Funcion del miembro dentro del personal de sala (caja, mesero, etc.).
+  position   StaffSubRole @default(caja)
   isActive   Boolean   @default(true) @map("is_active")
   hiredAt    DateTime  @default(now()) @map("hired_at") @db.Timestamptz(6)
   revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)

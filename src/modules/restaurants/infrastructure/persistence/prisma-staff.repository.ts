@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import {
   AccountStatus as PrismaAccountStatus,
   UserRole,
+  StaffSubRole as PrismaStaffSubRole,
 } from '../../../../../generated/prisma/client';
+import { StaffSubRole } from '../../../../common/enums/staff-sub-role.enum';
 import { PrismaService } from '../../../../infrastructure/prisma/prisma.service';
 import { NotFoundError } from '../../../../common/errors/not-found-error';
 import { AccountStatus } from '../../../auth/domain/enums/account-status.enum';
@@ -18,10 +20,11 @@ import {
 const staffInclude = {
   profile: true,
   staffAssignments: {
-    where: { isActive: true },
-    include: {
+    select: {
+      position: true,
       location: { select: { id: true, name: true, restaurantId: true } },
     },
+    where: { isActive: true },
     orderBy: { hiredAt: 'desc' },
     take: 1,
   },
@@ -34,6 +37,7 @@ type StaffRow = {
   createdAt: Date;
   profile: { fullName: string; phone: string | null } | null;
   staffAssignments: {
+    position: PrismaStaffSubRole;
     location: { id: string; name: string; restaurantId: string };
   }[];
 };
@@ -92,7 +96,12 @@ export class PrismaStaffRepository implements StaffRepository {
         termsAcceptedAt: new Date(),
         privacyAcceptedAt: new Date(),
         profile: { create: { fullName: data.fullName, phone: data.phone } },
-        staffAssignments: { create: { locationId: data.locationId } },
+        staffAssignments: {
+          create: {
+            locationId: data.locationId,
+            position: data.subRole as PrismaStaffSubRole,
+          },
+        },
       },
       include: staffInclude,
     });
@@ -112,6 +121,16 @@ export class PrismaStaffRepository implements StaffRepository {
             ...(data.phone !== undefined ? { phone: data.phone } : {}),
           },
         },
+        ...(data.subRole !== undefined
+          ? {
+              staffAssignments: {
+                updateMany: {
+                  where: { isActive: true },
+                  data: { position: data.subRole as PrismaStaffSubRole },
+                },
+              },
+            }
+          : {}),
       },
       include: staffInclude,
     });
@@ -168,6 +187,7 @@ function toDomain(row: StaffRow): StaffMember {
     fullName: row.profile?.fullName ?? '',
     email: row.email,
     phone: row.profile?.phone ?? null,
+    subRole: row.staffAssignments[0].position as StaffSubRole,
     status: row.status as unknown as AccountStatus,
     createdAt: row.createdAt,
     location,

@@ -64,6 +64,7 @@ export class CreateStaffUserUseCase {
         email,
         fullName: command.fullName.trim(),
         phone: command.phone?.trim() || null,
+        subRole: command.subRole,
         locationId: command.locationId,
       });
     } catch (error) {

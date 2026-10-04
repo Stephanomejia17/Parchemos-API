@@ -1,3 +1,5 @@
+import { StaffSubRole } from '../../../../common/enums/staff-sub-role.enum';
+
 /**
  * Inputs de aplicación de AN-01 y GU-05.
  *
@@ -34,6 +36,7 @@ export interface CreateStaffCommand {
   fullName: string;
   email: string;
   phone?: string;
+  subRole: StaffSubRole;
   locationId: string;
   initialPassword: string;
 }
@@ -41,6 +44,7 @@ export interface CreateStaffCommand {
 export interface UpdateStaffCommand {
   fullName?: string;
   phone?: string;
+  subRole?: StaffSubRole;
 }
 
 export interface CreateLocationReviewCommand {

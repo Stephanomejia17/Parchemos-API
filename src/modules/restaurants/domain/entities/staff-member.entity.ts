@@ -1,4 +1,5 @@
 import { AccountStatus } from '../../../auth/domain/enums/account-status.enum';
+import { StaffSubRole } from '../../../../common/enums/staff-sub-role.enum';
 
 export interface StaffLocation {
   id: string;
@@ -11,6 +12,7 @@ export interface StaffMemberProps {
   fullName: string;
   email: string;
   phone: string | null;
+  subRole: StaffSubRole;
   status: AccountStatus;
   createdAt: Date;
   location: StaffLocation;
@@ -25,6 +27,7 @@ export class StaffMember {
   readonly fullName: string;
   readonly email: string;
   readonly phone: string | null;
+  readonly subRole: StaffSubRole;
   readonly status: AccountStatus;
   readonly createdAt: Date;
   readonly location: StaffLocation;
@@ -34,6 +37,7 @@ export class StaffMember {
     this.fullName = props.fullName;
     this.email = props.email;
     this.phone = props.phone;
+    this.subRole = props.subRole;
     this.status = props.status;
     this.createdAt = props.createdAt;
     this.location = props.location;
