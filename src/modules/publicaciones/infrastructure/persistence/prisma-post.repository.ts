@@ -83,7 +83,31 @@ export class PrismaPostRepository implements PostRepository {
     return toView(row);
   }
 
-  async findFeed(limit: number, after: PostCursor | null): Promise<FeedSlice> {
+  async countByAuthor(authorId: string): Promise<number> {
+    return this.prisma.post.count({
+      where: { authorId, status: PostStatus.publicada },
+    });
+  }
+
+  async removeByAuthor(id: string, authorId: string): Promise<boolean> {
+    const { count } = await this.prisma.post.updateMany({
+      where: { id, authorId, status: PostStatus.publicada },
+      data: {
+        status: PostStatus.eliminada,
+        removedById: authorId,
+        removalReason: 'Eliminada por su autor',
+        removedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    return count > 0;
+  }
+
+  async findFeed(
+    limit: number,
+    after: PostCursor | null,
+    authorId?: string,
+  ): Promise<FeedSlice> {
     // Keyset sobre (created_at, id): usa posts_feed_idx sin OFFSET (PARCHE-76/77).
     // `created_at::text` conserva los microsegundos que `Date` perderia.
     const page = await this.prisma.$queryRaw<
@@ -92,6 +116,7 @@ export class PrismaPostRepository implements PostRepository {
       SELECT id, created_at::text AS created_at
       FROM public.posts
       WHERE status = 'publicada'
+      ${authorId ? Prisma.sql`AND author_id = ${authorId}::uuid` : Prisma.empty}
       ${
         after
           ? Prisma.sql`AND (created_at, id) < (${after.createdAt}::timestamptz, ${after.id}::uuid)`

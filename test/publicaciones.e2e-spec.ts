@@ -17,6 +17,10 @@ import { Role } from '../src/common/enums/role.enum';
 import { CreatePostUseCase } from '../src/modules/publicaciones/application/create-post.use-case';
 import { GetPostUseCase } from '../src/modules/publicaciones/application/get-post.use-case';
 import { ListFeedUseCase } from '../src/modules/publicaciones/application/list-feed.use-case';
+import {
+  DeleteMyPostUseCase,
+  ListMyPostsUseCase,
+} from '../src/modules/publicaciones/application/my-posts.use-cases';
 import { POST_MEDIA_STORAGE } from '../src/modules/publicaciones/domain/post-media-storage';
 import type { PostMediaStorage } from '../src/modules/publicaciones/domain/post-media-storage';
 import type { PostCursor } from '../src/modules/publicaciones/domain/post-cursor';
@@ -106,9 +110,31 @@ class InMemoryPostRepository implements PostRepository {
     return Promise.resolve(view);
   }
 
-  findFeed(limit: number, after: PostCursor | null): Promise<FeedSlice> {
+  countByAuthor(authorId: string): Promise<number> {
+    return Promise.resolve(
+      this.posts.filter(
+        (p) => p.author.id === authorId && p.status === 'publicada',
+      ).length,
+    );
+  }
+
+  removeByAuthor(id: string, authorId: string): Promise<boolean> {
+    const post = this.posts.find(
+      (p) =>
+        p.id === id && p.author.id === authorId && p.status === 'publicada',
+    );
+    if (post) post.status = 'eliminada';
+    return Promise.resolve(Boolean(post));
+  }
+
+  findFeed(
+    limit: number,
+    after: PostCursor | null,
+    authorId?: string,
+  ): Promise<FeedSlice> {
     const ordered = this.posts
       .filter((post) => post.status === 'publicada')
+      .filter((post) => !authorId || post.author.id === authorId)
       .sort(
         (a, b) => b.stamp.localeCompare(a.stamp) || b.id.localeCompare(a.id),
       )
@@ -183,6 +209,8 @@ describe('PARCHE-4 publicar y explorar (e2e)', () => {
         CreatePostUseCase,
         ListFeedUseCase,
         GetPostUseCase,
+        ListMyPostsUseCase,
+        DeleteMyPostUseCase,
         { provide: POST_REPOSITORY, useValue: repo },
         { provide: POST_MEDIA_STORAGE, useValue: storage },
         { provide: APP_GUARD, useClass: HeaderAuthGuard },
@@ -330,5 +358,75 @@ describe('PARCHE-4 publicar y explorar (e2e)', () => {
 
   it('el feed exige sesion', async () => {
     await http().get('/feed').expect(401);
+  });
+
+  describe('perfil: mis publicaciones', () => {
+    const mine = (user: string, query = '') =>
+      http().get(`/publicaciones/mias${query}`).set('x-test-user', user);
+
+    it('lista solo las publicaciones del usuario y el total', async () => {
+      const res = await mine('restaurante').expect(200);
+      const body = res.body as {
+        items: { author: { id: string } }[];
+        total: number | null;
+      };
+
+      expect(body.items.length).toBeGreaterThan(0);
+      expect(
+        body.items.every((item) => item.author.id === 'u-restaurante'),
+      ).toBe(true);
+      expect(body.total).toBe(body.items.length);
+    });
+
+    it('en paginas siguientes no repite el total', async () => {
+      const first = await mine('comensal', '?limit=2').expect(200);
+      const cursor = (first.body as { nextCursor: string }).nextCursor;
+      const next = await mine('comensal', `?limit=2&cursor=${cursor}`).expect(
+        200,
+      );
+      expect((next.body as { total: number | null }).total).toBeNull();
+    });
+
+    it('exige sesion y rol de comensal o restaurante', async () => {
+      await http().get('/publicaciones/mias').expect(401);
+      await mine('admin').expect(403);
+    });
+
+    it('el autor puede borrar la suya y deja de aparecer en el feed', async () => {
+      const created = await publicar('restaurante')
+        .attach('files', PNG, 'borrar.png')
+        .expect(201);
+      const id = (created.body as { id: string }).id;
+
+      await http()
+        .delete(`/publicaciones/${id}`)
+        .set('x-test-user', 'restaurante')
+        .expect(204);
+
+      await http()
+        .get(`/publicaciones/${id}`)
+        .set('x-test-user', 'comensal')
+        .expect(404);
+    });
+
+    it('no se puede borrar la de otro (404) ni dos veces', async () => {
+      const created = await publicar('comensal')
+        .attach('files', PNG, 'ajena.png')
+        .expect(201);
+      const id = (created.body as { id: string }).id;
+
+      await http()
+        .delete(`/publicaciones/${id}`)
+        .set('x-test-user', 'restaurante')
+        .expect(404);
+      await http()
+        .delete(`/publicaciones/${id}`)
+        .set('x-test-user', 'comensal')
+        .expect(204);
+      await http()
+        .delete(`/publicaciones/${id}`)
+        .set('x-test-user', 'comensal')
+        .expect(404);
+    });
   });
 });

@@ -55,8 +55,23 @@ export interface FeedSlice {
 export interface PostRepository {
   /** Crea el post y sus medios en una sola transaccion. */
   create(data: NewPost): Promise<PostView>;
-  /** Solo publicaciones `publicada`, de la mas reciente a la mas antigua. */
-  findFeed(limit: number, after: PostCursor | null): Promise<FeedSlice>;
+  /**
+   * Solo publicaciones `publicada`, de la mas reciente a la mas antigua.
+   * Con `authorId` devuelve unicamente las de ese autor (perfil).
+   */
+  findFeed(
+    limit: number,
+    after: PostCursor | null,
+    authorId?: string,
+  ): Promise<FeedSlice>;
+  /** Cantidad de publicaciones `publicada` de un autor. */
+  countByAuthor(authorId: string): Promise<number>;
+  /**
+   * El autor retira su publicacion (borrado logico: queda `eliminada` con
+   * motivo, como exige `posts_removal_chk`). `false` si no existe, no es suya
+   * o ya no esta publicada.
+   */
+  removeByAuthor(id: string, authorId: string): Promise<boolean>;
   /** `null` si no existe o no esta `publicada` (oculta/eliminada). */
   findPublishedById(id: string): Promise<PostView | null>;
   /** Una sede asociable a una publicacion: debe existir y estar activa. */
