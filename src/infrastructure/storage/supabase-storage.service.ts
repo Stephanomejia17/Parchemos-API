@@ -27,7 +27,9 @@ export class SupabaseStorageService {
 
   constructor(config: ConfigService) {
     this.supabaseUrl = config.getOrThrow<string>('SUPABASE_URL');
-    this.serviceRoleKey = config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    this.serviceRoleKey = config.getOrThrow<string>(
+      'SUPABASE_SERVICE_ROLE_KEY',
+    );
     this.bucket = config.getOrThrow<string>('SUPABASE_STORAGE_BUCKET');
   }
 
@@ -51,7 +53,9 @@ export class SupabaseStorageService {
 
     if (!response.ok) {
       const details = await response.text();
-      this.logger.error(`Supabase Storage rechazó la imagen: ${response.status} ${details}`);
+      this.logger.error(
+        `Supabase Storage rechazó la imagen: ${response.status} ${details}`,
+      );
       throw new InternalServerErrorException('No se pudo subir la imagen.');
     }
 
@@ -61,6 +65,43 @@ export class SupabaseStorageService {
       contentType: file.mimetype,
       size: file.size,
     };
+  }
+
+  /**
+   * Sube un binario ya validado por el llamador (p. ej. los medios de DO-04).
+   * El nombre es un UUID, asi que el objeto es inmutable y puede cachearse un
+   * ano en el CDN.
+   */
+  async uploadObject(
+    body: Buffer,
+    options: { folder: string; contentType: string; extension: string },
+  ): Promise<{ path: string; publicUrl: string }> {
+    const path = `${cleanFolder(options.folder)}/${randomUUID()}.${options.extension.replace(/[^a-z0-9]/gi, '')}`;
+    const response = await fetch(this.objectUrl(path), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.serviceRoleKey}`,
+        apikey: this.serviceRoleKey,
+        'Content-Type': options.contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'x-upsert': 'false',
+      },
+      body: body as unknown as BodyInit,
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      this.logger.error(
+        `Supabase Storage rechazó el archivo: ${response.status} ${details}`,
+      );
+      throw new InternalServerErrorException('No se pudo subir el archivo.');
+    }
+    return { path, publicUrl: this.publicUrl(path) };
+  }
+
+  /** URL publica (servida por el CDN de Supabase) de un objeto del bucket. */
+  publicUrl(path: string): string {
+    return `${this.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(this.bucket)}/${path}`;
   }
 
   async remove(path: string): Promise<void> {
@@ -73,7 +114,9 @@ export class SupabaseStorageService {
     });
     if (!response.ok && response.status !== 404) {
       const details = await response.text();
-      this.logger.warn(`No se pudo eliminar ${path} de Storage: ${response.status} ${details}`);
+      this.logger.warn(
+        `No se pudo eliminar ${path} de Storage: ${response.status} ${details}`,
+      );
     }
   }
 
@@ -88,7 +131,9 @@ export class SupabaseStorageService {
 
   private validateImage(file: { mimetype: string; size: number }): void {
     if (!ALLOWED_TYPES.has(file.mimetype)) {
-      throw new BadRequestException('Solo se permiten imágenes JPG, PNG o WEBP.');
+      throw new BadRequestException(
+        'Solo se permiten imágenes JPG, PNG o WEBP.',
+      );
     }
     if (file.size > MAX_IMAGE_SIZE) {
       throw new BadRequestException('La imagen no puede superar 5 MB.');
@@ -97,8 +142,11 @@ export class SupabaseStorageService {
 }
 
 function cleanFolder(folder: string): string {
-  const cleaned = folder.replace(/[^a-zA-Z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '');
-  if (!cleaned) throw new BadRequestException('La carpeta de almacenamiento no es válida.');
+  const cleaned = folder
+    .replace(/[^a-zA-Z0-9/_-]/g, '')
+    .replace(/^\/+|\/+$/g, '');
+  if (!cleaned)
+    throw new BadRequestException('La carpeta de almacenamiento no es válida.');
   return cleaned;
 }
 

@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { LocationStatus as PrismaLocationStatus } from '../../../../../generated/prisma/client';
+import {
+  LocationStatus as PrismaLocationStatus,
+  Prisma,
+} from '../../../../../generated/prisma/client';
 import { PrismaService } from '../../../../infrastructure/prisma/prisma.service';
 import { Location } from '../../domain/entities/location.entity';
 import {
@@ -7,6 +10,7 @@ import {
   LocationOwnerInfo,
   PublicLocation,
   LocationRepository,
+  LocationSearchResult,
   UpdateLocationData,
 } from '../../domain/repositories/location.repository';
 import {
@@ -164,6 +168,36 @@ export class PrismaLocationRepository implements LocationRepository {
     return rows.map((row) =>
       Object.assign(toLocationDomain(row), { restaurant: row.restaurant }),
     );
+  }
+
+  async searchActiveByName(
+    query: string,
+    limit: number,
+  ): Promise<LocationSearchResult[]> {
+    // Se escapan los comodines de LIKE para que "50%" busque literalmente "50%".
+    const escaped = query.replace(/[\\%_]/g, (char) => `\\${char}`);
+    try {
+      return await this.prisma.$queryRaw<LocationSearchResult[]>(Prisma.sql`
+        SELECT id, name, address
+        FROM public.locations
+        WHERE status = 'activa'
+          AND unaccent(name) ILIKE unaccent(${`%${escaped}%`})
+        ORDER BY (unaccent(name) ILIKE unaccent(${`${escaped}%`})) DESC, name ASC
+        LIMIT ${limit}
+      `);
+    } catch {
+      // Si la extension unaccent no esta disponible se busca solo sin
+      // distinguir mayusculas, en vez de dejar el selector inservible.
+      return this.prisma.location.findMany({
+        where: {
+          status: PrismaLocationStatus.activa,
+          name: { contains: query, mode: 'insensitive' },
+        },
+        select: { id: true, name: true, address: true },
+        orderBy: { name: 'asc' },
+        take: limit,
+      });
+    }
   }
 
   async findPendingForReview(): Promise<LocationOwnerInfo[]> {

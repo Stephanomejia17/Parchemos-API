@@ -31,6 +31,7 @@ import { RejectLocationUseCase } from './application/use-cases/reject-location.u
 import { RemoveGalleryImageUseCase } from './application/use-cases/remove-gallery-image.use-case';
 import { ReplaceSchedulesUseCase } from './application/use-cases/replace-schedules.use-case';
 import { RequestLocationApprovalUseCase } from './application/use-cases/request-location-approval.use-case';
+import { SearchLocationsUseCase } from './application/use-cases/search-locations.use-case';
 import { SetLocationImageUseCase } from './application/use-cases/set-location-image.use-case';
 import { SetStaffEnabledUseCase } from './application/use-cases/set-staff-enabled.use-case';
 import { UpdateLocationUseCase } from './application/use-cases/update-location.use-case';
@@ -69,6 +70,7 @@ import { UpdateLocationReviewUseCase } from './application/use-cases/update-loca
     UpdateLocationReviewUseCase,
     ListLocationReviewsUseCase,
     ListPublicLocationsUseCase,
+    SearchLocationsUseCase,
     // Los casos de uso dependen de las interfaces del dominio, no de Prisma
     // ni de Supabase Storage directamente.
     { provide: RESTAURANT_REPOSITORY, useClass: PrismaRestaurantRepository },

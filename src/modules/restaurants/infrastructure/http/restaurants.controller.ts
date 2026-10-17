@@ -37,6 +37,7 @@ import { ListPendingLocationsUseCase } from '../../application/use-cases/list-pe
 import { ListStaffUseCase } from '../../application/use-cases/list-staff.use-case';
 import { ListLocationReviewsUseCase } from '../../application/use-cases/list-location-reviews.use-case';
 import { ListPublicLocationsUseCase } from '../../application/use-cases/list-public-locations.use-case';
+import { SearchLocationsUseCase } from '../../application/use-cases/search-locations.use-case';
 import { PreviewLocationUseCase } from '../../application/use-cases/preview-location.use-case';
 import { ReassignStaffUseCase } from '../../application/use-cases/reassign-staff.use-case';
 import { RejectLocationUseCase } from '../../application/use-cases/reject-location.use-case';
@@ -63,6 +64,7 @@ import {
   UpdateLocationDto,
   UpdateStaffDto,
   ListPublicLocationsQueryDto,
+  SearchLocationsQueryDto,
 } from './restaurant.dto';
 
 @Controller('restaurantes')
@@ -94,7 +96,15 @@ export class RestaurantsController {
     private readonly createOrUpdateLocationReview: CreateOrUpdateLocationReviewUseCase,
     private readonly updateLocationReview: UpdateLocationReviewUseCase,
     private readonly listLocationReviews: ListLocationReviewsUseCase,
+    private readonly searchLocations: SearchLocationsUseCase,
   ) {}
+
+  /** DO-04: autocompletado del selector de restaurante. Requiere sesion. */
+  @Get('buscar')
+  @Roles(Role.COMENSAL, Role.RESTAURANTE)
+  search(@Query() query: SearchLocationsQueryDto) {
+    return this.searchLocations.execute(query.q ?? '');
+  }
 
   /** AN-01: una cuenta restaurante puede crear y administrar varias empresas. */
   @Post()

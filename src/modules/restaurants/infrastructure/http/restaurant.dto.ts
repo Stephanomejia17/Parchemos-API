@@ -210,6 +210,13 @@ export class ReassignStaffLocationDto {
   locationId!: string;
 }
 
+export class SearchLocationsQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  q?: string;
+}
+
 export class ListPublicLocationsQueryDto {
   @IsOptional()
   @IsString()

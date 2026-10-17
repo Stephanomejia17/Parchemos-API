@@ -51,6 +51,12 @@ export interface PublicLocation extends Location {
   };
 }
 
+export interface LocationSearchResult {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export interface LocationRepository {
   create(data: CreateLocationData): Promise<Location>;
   update(id: string, data: UpdateLocationData): Promise<Location>;
@@ -65,6 +71,8 @@ export interface LocationRepository {
     precio?: string,
     nombre?: string,
   ): Promise<PublicLocation[]>;
+  /** Autocompletado (DO-04): sedes activas por nombre, sin importar mayusculas ni tildes. */
+  searchActiveByName(query: string, limit: number): Promise<LocationSearchResult[]>;
   findPendingForReview(): Promise<LocationOwnerInfo[]>;
   findAllForAdmin(): Promise<LocationOwnerInfo[]>;
   addGalleryImage(locationId: string, url: string): Promise<LocationImageItem>;
