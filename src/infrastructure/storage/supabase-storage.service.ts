@@ -24,6 +24,8 @@ export class SupabaseStorageService {
   private readonly supabaseUrl: string;
   private readonly serviceRoleKey: string;
   private readonly bucket: string;
+  /** Bucket de los medios del feed (DO-04); si no se define, usa el general. */
+  private readonly postsBucket: string;
 
   constructor(config: ConfigService) {
     this.supabaseUrl = config.getOrThrow<string>('SUPABASE_URL');
@@ -31,6 +33,8 @@ export class SupabaseStorageService {
       'SUPABASE_SERVICE_ROLE_KEY',
     );
     this.bucket = config.getOrThrow<string>('SUPABASE_STORAGE_BUCKET');
+    this.postsBucket =
+      config.get<string>('SUPABASE_POSTS_BUCKET') || this.bucket;
   }
 
   async uploadImage(
@@ -77,7 +81,7 @@ export class SupabaseStorageService {
     options: { folder: string; contentType: string; extension: string },
   ): Promise<{ path: string; publicUrl: string }> {
     const path = `${cleanFolder(options.folder)}/${randomUUID()}.${options.extension.replace(/[^a-z0-9]/gi, '')}`;
-    const response = await fetch(this.objectUrl(path), {
+    const response = await fetch(this.objectUrl(path, this.postsBucket), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.serviceRoleKey}`,
@@ -99,13 +103,19 @@ export class SupabaseStorageService {
     return { path, publicUrl: this.publicUrl(path) };
   }
 
-  /** URL publica (servida por el CDN de Supabase) de un objeto del bucket. */
-  publicUrl(path: string): string {
-    return `${this.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(this.bucket)}/${path}`;
+  /** Borra un medio del feed (bucket de publicaciones). */
+  removePostMedia(path: string): Promise<void> {
+    return this.remove(path, this.postsBucket);
   }
 
-  async remove(path: string): Promise<void> {
-    const response = await fetch(this.objectUrl(path), {
+  /** URL publica (servida por el CDN de Supabase) de un medio del feed. */
+  publicUrl(path: string): string {
+    return `${this.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(this.postsBucket)}/${path}`;
+  }
+
+  /** Borra un objeto; `bucket` por defecto es el general (imagenes de sedes/productos). */
+  async remove(path: string, bucket: string = this.bucket): Promise<void> {
+    const response = await fetch(this.objectUrl(path, bucket), {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${this.serviceRoleKey}`,
@@ -125,8 +135,8 @@ export class SupabaseStorageService {
     return url.startsWith(prefix) ? url.slice(prefix.length) : null;
   }
 
-  private objectUrl(path: string): string {
-    return `${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(this.bucket)}/${path}`;
+  private objectUrl(path: string, bucket: string = this.bucket): string {
+    return `${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${path}`;
   }
 
   private validateImage(file: { mimetype: string; size: number }): void {

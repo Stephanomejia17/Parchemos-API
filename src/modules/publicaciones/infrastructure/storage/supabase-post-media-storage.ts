@@ -16,7 +16,7 @@ export class SupabasePostMediaStorage implements PostMediaStorage {
   }
 
   async removeMany(keys: string[]): Promise<void> {
-    await Promise.all(keys.map((key) => this.storage.remove(key)));
+    await Promise.all(keys.map((key) => this.storage.removePostMedia(key)));
   }
 
   urlFor(key: string): string {
