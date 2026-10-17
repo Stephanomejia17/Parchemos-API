@@ -42,6 +42,8 @@ import { UpdateLocationReviewUseCase } from './application/use-cases/update-loca
 
 @Module({
   controllers: [RestaurantsController],
+  // PU-03 reutiliza el listado de sedes activas como fuente de candidatos.
+  exports: [ListPublicLocationsUseCase],
   providers: [
     // Casos de uso.
     CreateRestaurantUseCase,

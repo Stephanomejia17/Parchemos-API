@@ -42,6 +42,9 @@ import { MesasModule } from './modules/mesas/mesas.module';
     PedidosModule,
     ReservasModule,
     ResenasModule,
+    PublicacionesModule,
+    RecomendacionesModule,
+    PreferenciasModule,
   ],
   controllers: [AppController],
   providers: [
