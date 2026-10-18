@@ -106,11 +106,7 @@ export class PrismaLocationRepository implements LocationRepository {
         ...locationInclude,
         restaurant: { select: { id: true, businessName: true } },
       },
-      orderBy: [
-        { avgRating: 'desc' },
-        { ratingCount: 'desc' },
-        { id: 'asc' },
-      ],
+      orderBy: [{ avgRating: 'desc' }, { ratingCount: 'desc' }, { id: 'asc' }],
       take: limit,
     });
     return rows.map((row) =>
