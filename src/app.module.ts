@@ -14,6 +14,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SupabaseJwtGuard } from './modules/auth/infrastructure/guards/supabase-jwt.guard';
 import { PedidosModule } from './modules/pedidos/pedidos.module';
 import { ResenasModule } from './modules/resenas/resenas.module';
+import { FavoritosModule } from './modules/favoritos/favoritos.module';
 import { PreferenciasModule } from './modules/preferencias/preferencias.module';
 import { PublicacionesModule } from './modules/publicaciones/publicaciones.module';
 import { RecomendacionesModule } from './modules/recomendaciones/recomendaciones.module';
@@ -45,6 +46,7 @@ import { MesasModule } from './modules/mesas/mesas.module';
     PublicacionesModule,
     RecomendacionesModule,
     PreferenciasModule,
+    FavoritosModule,
   ],
   controllers: [AppController],
   providers: [

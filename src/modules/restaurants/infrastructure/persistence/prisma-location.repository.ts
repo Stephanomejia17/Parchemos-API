@@ -98,6 +98,40 @@ export class PrismaLocationRepository implements LocationRepository {
     return row ? toLocationDomain(row) : null;
   }
 
+  async findTopRated(limit: number): Promise<PublicLocation[]> {
+    // Usa locations_public_rating_idx (avg_rating DESC, rating_count DESC) sobre sedes activas.
+    const rows = await this.prisma.location.findMany({
+      where: { status: PrismaLocationStatus.activa },
+      include: {
+        ...locationInclude,
+        restaurant: { select: { id: true, businessName: true } },
+      },
+      orderBy: [
+        { avgRating: 'desc' },
+        { ratingCount: 'desc' },
+        { id: 'asc' },
+      ],
+      take: limit,
+    });
+    return rows.map((row) =>
+      Object.assign(toLocationDomain(row), { restaurant: row.restaurant }),
+    );
+  }
+
+  async findActiveByIds(ids: string[]): Promise<PublicLocation[]> {
+    if (!ids.length) return [];
+    const rows = await this.prisma.location.findMany({
+      where: { id: { in: ids }, status: PrismaLocationStatus.activa },
+      include: {
+        ...locationInclude,
+        restaurant: { select: { id: true, businessName: true } },
+      },
+    });
+    return rows.map((row) =>
+      Object.assign(toLocationDomain(row), { restaurant: row.restaurant }),
+    );
+  }
+
   async findAllActive(
     categoria?: string,
     ordenarPor?: string,

@@ -65,6 +65,10 @@ export interface LocationRepository {
   findByIdAndOwner(id: string, ownerId: string): Promise<Location | null>;
   /** Solo sedes activas: lo que puede ver un comensal (MB-01, DO-01). */
   findActiveById(id: string): Promise<Location | null>;
+  /** DO-02: sedes activas de mayor a menor calificacion (desempate por numero de resenas). */
+  findTopRated(limit: number): Promise<PublicLocation[]>;
+  /** DO-05: sedes activas por id; las que ya no estan activas simplemente no vienen. */
+  findActiveByIds(ids: string[]): Promise<PublicLocation[]>;
   findAllActive(
     categoria?: string,
     ordenarPor?: string,

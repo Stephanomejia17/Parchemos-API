@@ -9,7 +9,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { IS_PUBLIC_KEY } from '../../../../common/decorators/public.decorator';
+import {
+  IS_PUBLIC_KEY,
+  OPTIONAL_AUTH_KEY,
+} from '../../../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from '../../../../common/decorators/current-user.decorator';
 import { SupabaseAuthService } from '../../../../infrastructure/auth/supabase-auth.service';
 import { AccountDisabledError } from '../../domain/errors/account-disabled.error';
@@ -36,35 +39,31 @@ export class SupabaseJwtGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
-
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthenticatedUser }>();
     const token = extractBearerToken(request);
+
+    if (isPublic) {
+      const optional = this.reflector.getAllAndOverride<boolean>(
+        OPTIONAL_AUTH_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      if (optional && token) {
+        try {
+          request.user = await this.loadUser(token);
+        } catch {
+          // Token invalido o cuenta no habilitada: se atiende como visitante.
+        }
+      }
+      return true;
+    }
     if (!token) {
       throw new UnauthorizedException('No hay sesión activa.');
     }
 
     try {
-      const supabaseUser = await this.supabaseAuth.verifyAccessToken(token);
-      const account = await this.users.findById(supabaseUser.id);
-      if (!account) {
-        throw new UserNotFoundError(supabaseUser.id);
-      }
-      if (account.isDisabled()) {
-        throw new AccountDisabledError(account.id);
-      }
-      if (account.isSuspended()) {
-        throw new AccountSuspendedError(account.id, account.suspensionReason);
-      }
-
-      request.user = {
-        id: account.id,
-        email: account.email,
-        role: account.role,
-        status: account.status,
-      };
+      request.user = await this.loadUser(token);
       return true;
     } catch (error) {
       if (error instanceof UserNotFoundError) {
@@ -81,6 +80,27 @@ export class SupabaseJwtGuard implements CanActivate {
       }
       throw error;
     }
+  }
+
+  /** Valida el token y carga la cuenta; lanza los errores de dominio si no es utilizable. */
+  private async loadUser(token: string): Promise<AuthenticatedUser> {
+    const supabaseUser = await this.supabaseAuth.verifyAccessToken(token);
+    const account = await this.users.findById(supabaseUser.id);
+    if (!account) {
+      throw new UserNotFoundError(supabaseUser.id);
+    }
+    if (account.isDisabled()) {
+      throw new AccountDisabledError(account.id);
+    }
+    if (account.isSuspended()) {
+      throw new AccountSuspendedError(account.id, account.suspensionReason);
+    }
+    return {
+      id: account.id,
+      email: account.email,
+      role: account.role,
+      status: account.status,
+    };
   }
 }
 
