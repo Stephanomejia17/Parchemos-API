@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CreatePostUseCase } from './application/create-post.use-case';
 import { GetPostUseCase } from './application/get-post.use-case';
 import { ListFeedUseCase } from './application/list-feed.use-case';
+import { RegisterPostViewUseCase } from './application/register-post-view.use-case';
 import {
   DeleteMyPostUseCase,
   ListMyPostsUseCase,
@@ -20,6 +21,7 @@ import { SupabasePostMediaStorage } from './infrastructure/storage/supabase-post
     GetPostUseCase,
     ListMyPostsUseCase,
     DeleteMyPostUseCase,
+    RegisterPostViewUseCase,
     { provide: POST_REPOSITORY, useClass: PrismaPostRepository },
     { provide: POST_MEDIA_STORAGE, useClass: SupabasePostMediaStorage },
   ],
