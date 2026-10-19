@@ -21,6 +21,7 @@ import { CreatePostUseCase } from '../../application/create-post.use-case';
 import type { UploadedFile } from '../../application/create-post.use-case';
 import { GetPostUseCase } from '../../application/get-post.use-case';
 import { ListFeedUseCase } from '../../application/list-feed.use-case';
+import { RegisterPostViewUseCase } from '../../application/register-post-view.use-case';
 import {
   DeleteMyPostUseCase,
   ListMyPostsUseCase,
@@ -42,6 +43,7 @@ export class PublicacionesController {
     private readonly getPost: GetPostUseCase,
     private readonly listMyPosts: ListMyPostsUseCase,
     private readonly deleteMyPost: DeleteMyPostUseCase,
+    private readonly registerPostView: RegisterPostViewUseCase,
   ) {}
 
   @Get('feed')
@@ -72,6 +74,17 @@ export class PublicacionesController {
   @Get('publicaciones/:id')
   detail(@Param('id', ParseUUIDPipe) id: string) {
     return this.getPost.execute(id);
+  }
+
+  @Post('publicaciones/:id/vista')
+  @HttpCode(204)
+  @Roles(Role.COMENSAL, Role.RESTAURANTE)
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  async registerView(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.registerPostView.execute(id, user.id);
   }
 
   @Post('publicaciones')

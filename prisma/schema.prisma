@@ -322,6 +322,7 @@ model User {
   posts               Post[]                @relation("PostAuthor")
   moderatedPosts      Post[]                @relation("PostModerator")
   postLikes           PostLike[]
+  postViews           PostView[]
   locationReviews     LocationReview[]
   productReviews      ProductReview[]
   reportsFiled        ContentReport[]       @relation("ReportReporter")
@@ -1242,6 +1243,7 @@ model Post {
 
   media         PostMedia[]
   likes         PostLike[]
+  views         PostView[]
   reports       ContentReport[]
 
   @@index([authorId, createdAt(sort: Desc)], map: "posts_author_idx")
@@ -1281,6 +1283,21 @@ model PostLike {
   @@id([postId, userId])
   @@index([userId, createdAt(sort: Desc)], map: "post_likes_user_idx")
   @@map("post_likes")
+}
+
+/// Una visualizacion autentificada por usuario, publicacion y dia (AE-03).
+model PostView {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+  viewDate  DateTime @default(dbgenerated("(timezone('America/Bogota'::text, now()))::date")) @map("view_date") @db.Date
+
+  @@unique([postId, userId, viewDate], map: "post_views_post_user_day_key")
+  @@index([postId, viewedAt(sort: Desc)], map: "post_views_post_date_idx")
+  @@map("post_views")
 }
 
 /// DO-05: la PK compuesta evita duplicados por doble clic (PARCHE-98).
