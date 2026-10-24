@@ -165,6 +165,22 @@ enum OrderPaymentStatus {
   @@map("order_payment_status")
 }
 
+enum SurveyQuestionType {
+  calificacion
+  opciones
+  texto
+
+  @@map("survey_question_type")
+}
+
+enum SurveyResponseStatus {
+  respondida
+  descartada
+  pospuesta
+
+  @@map("survey_response_status")
+}
+
 /// GP-07: estado de conciliacion de la cuenta de mesa.
 enum BillStatus {
   abierta
@@ -317,6 +333,8 @@ model User {
 
   restaurants         Restaurant[]
   staffAssignments    RestaurantStaff[]
+  surveys             Survey[]
+  surveyResponses     SurveyResponse[]
 
   favorites           Favorite[]
   posts               Post[]                @relation("PostAuthor")
@@ -580,6 +598,8 @@ model Restaurant {
   products       Product[]
   orders         Order[]
   commissions    Commission[]
+  surveys        SurveyRestaurant[]
+  surveyResponses SurveyResponse[]
 
   @@unique([taxId], map: "restaurants_tax_id_key", where: raw("(tax_id IS NOT NULL)"))
   @@index([ownerId])
@@ -857,6 +877,92 @@ model Reservation {
   @@map("reservations")
 }
 
+/// Encuesta configurable por el propietario y reutilizable en sus restaurantes.
+model Survey {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId     String    @map("owner_id") @db.Uuid
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String    @default("Encuesta de satisfacción")
+  isActive    Boolean   @default(false) @map("is_active")
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  assignments SurveyRestaurant[]
+  questions  SurveyQuestion[]
+  responses  SurveyResponse[]
+
+  @@map("surveys")
+}
+
+model SurveyRestaurant {
+  surveyId     String     @map("survey_id") @db.Uuid
+  survey       Survey     @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  @@id([surveyId, restaurantId])
+  @@index([restaurantId])
+  @@map("survey_restaurants")
+}
+
+model SurveyQuestion {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId    String             @map("survey_id") @db.Uuid
+  survey      Survey             @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  prompt      String
+  type        SurveyQuestionType
+  required    Boolean            @default(false)
+  position    Int
+  options     Json               @default("[]")
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  answers     SurveyAnswer[]
+
+  @@unique([surveyId, position], map: "survey_questions_position_key")
+  @@index([surveyId, position])
+  @@map("survey_questions")
+}
+
+model SurveyResponse {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId        String             @map("survey_id") @db.Uuid
+  survey          Survey             @relation(fields: [surveyId], references: [id], onDelete: Restrict)
+  restaurantId    String             @map("restaurant_id") @db.Uuid
+  restaurant      Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  orderId         String             @map("order_id") @db.Uuid
+  order           Order              @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  dinerId         String             @map("diner_id") @db.Uuid
+  diner           User               @relation(fields: [dinerId], references: [id], onDelete: Restrict)
+  surveyVersion   Int                @map("survey_version")
+  status          SurveyResponseStatus @default(respondida)
+  questionsSnapshot Json             @map("questions_snapshot")
+  submittedAt     DateTime           @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  answers         SurveyAnswer[]
+
+  @@unique([orderId, surveyId], map: "survey_responses_order_survey_key")
+  @@index([restaurantId, submittedAt])
+  @@index([surveyId, submittedAt])
+  @@map("survey_responses")
+}
+
+model SurveyAnswer {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  responseId      String          @map("response_id") @db.Uuid
+  response        SurveyResponse  @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId      String?         @map("question_id") @db.Uuid
+  question        SurveyQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  questionPrompt  String          @map("question_prompt")
+  questionType    SurveyQuestionType @map("question_type")
+  optionsSnapshot Json            @map("options_snapshot")
+  value           String
+
+  @@unique([responseId, questionPrompt], map: "survey_answers_response_prompt_key")
+  @@index([questionId])
+  @@map("survey_answers")
+}
+
 /// Trazabilidad de la reserva. La alimenta un trigger.
 model ReservationStatusHistory {
   id            BigInt             @id @default(autoincrement())
@@ -963,6 +1069,7 @@ model Order {
   deliveryAssignment  DeliveryAssignment?
   commission          Commission?
   loyaltyTransactions LoyaltyTransaction[]
+  surveyResponses     SurveyResponse[]
 
   @@index([billId], map: "orders_bill_idx", where: raw("(bill_id IS NOT NULL)"))
   @@index([courierId, createdAt(sort: Desc)], map: "orders_courier_idx", where: raw("(courier_id IS NOT NULL)"))
