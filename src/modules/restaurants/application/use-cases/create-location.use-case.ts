@@ -42,7 +42,7 @@ export class CreateLocationUseCase {
       restaurantId,
       name: command.name.trim(),
       description: command.description?.trim() || null,
-      address,
+      address: geocoded.formattedAddress,
       latitude: geocoded.latitude,
       longitude: geocoded.longitude,
     });

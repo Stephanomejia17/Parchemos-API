@@ -21,10 +21,7 @@ export class UpdateLocationUseCase {
     locationId: string,
     command: UpdateLocationCommand,
   ): Promise<Location> {
-    const location = await this.locations.findByIdAndOwner(
-      locationId,
-      ownerId,
-    );
+    const location = await this.locations.findByIdAndOwner(locationId, ownerId);
 
     if (!location) {
       throw new ForbiddenError(
@@ -47,7 +44,7 @@ export class UpdateLocationUseCase {
         ? { description: command.description.trim() }
         : {}),
       ...(command.address !== undefined
-        ? { address: command.address.trim() }
+        ? { address: geocoded?.formattedAddress ?? command.address.trim() }
         : {}),
       ...(geocoded
         ? {
