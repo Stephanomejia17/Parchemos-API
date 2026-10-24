@@ -50,6 +50,7 @@ import { UpdateLocationUseCase } from '../../application/use-cases/update-locati
 import { UpdateStaffUseCase } from '../../application/use-cases/update-staff.use-case';
 import { UploadLocationImageUseCase } from '../../application/use-cases/upload-location-image.use-case';
 import { UpdateLocationReviewUseCase } from '../../application/use-cases/update-location-review.use-case';
+import { DivipolaCatalogService } from '../../infrastructure/divipola/divipola-catalog.service';
 
 import {
   CreateLocationDto,
@@ -97,7 +98,14 @@ export class RestaurantsController {
     private readonly updateLocationReview: UpdateLocationReviewUseCase,
     private readonly listLocationReviews: ListLocationReviewsUseCase,
     private readonly searchLocations: SearchLocationsUseCase,
+    private readonly divipolaCatalog: DivipolaCatalogService,
   ) {}
+
+  @Get('catalogo/divipola')
+  @Public()
+  getDivipolaCatalog() {
+    return this.divipolaCatalog.getCatalog();
+  }
 
   /** DO-04: autocompletado del selector de restaurante. Requiere sesion. */
   @Get('buscar')

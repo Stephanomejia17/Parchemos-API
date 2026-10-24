@@ -61,6 +61,7 @@ export interface AppEnv {
   SUPABASE_STORAGE_BUCKET: string;
   /** Bucket de fotos y videos del feed (DO-04). Opcional: sin definir usa el general. */
   SUPABASE_POSTS_BUCKET?: string;
+  GEOAPIFY_API_KEY?: string;
 }
 
 export function validateEnv(
@@ -86,6 +87,8 @@ export function validateEnv(
     SUPABASE_STORAGE_BUCKET: requireString(config, 'SUPABASE_STORAGE_BUCKET'),
     SUPABASE_POSTS_BUCKET:
       (config.SUPABASE_POSTS_BUCKET as string | undefined)?.trim() || undefined,
+    GEOAPIFY_API_KEY:
+    (config.GEOAPIFY_API_KEY as string | undefined)?.trim() || undefined,
   };
 
   return { ...config, ...validated };
