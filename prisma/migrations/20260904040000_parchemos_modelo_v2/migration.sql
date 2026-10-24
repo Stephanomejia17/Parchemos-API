@@ -26,6 +26,10 @@
 --     pagado de una cuenta) los mantienen triggers, no la aplicacion.
 -- ============================================================================
 
+-- Prisma reejecuta esta migración sobre una base shadow vacía. Supabase crea
+-- `extensions` en sus bases administradas, pero una shadow local/temporal no
+-- necesariamente lo trae creado.
+CREATE SCHEMA IF NOT EXISTS extensions;
 SET search_path = public, extensions;
 
 -- ---------------------------------------------------------------------------

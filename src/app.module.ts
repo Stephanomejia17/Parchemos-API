@@ -23,6 +23,7 @@ import { RestaurantsModule } from './modules/restaurants/restaurants.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MesasModule } from './modules/mesas/mesas.module';
 import { EstadisticasModule } from './modules/estadisticas/estadisticas.module';
+import { ModeracionModule } from './modules/moderacion/moderacion.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { EstadisticasModule } from './modules/estadisticas/estadisticas.module';
     PreferenciasModule,
     EstadisticasModule,
     FavoritosModule,
+    ModeracionModule,
   ],
   controllers: [AppController],
   providers: [
