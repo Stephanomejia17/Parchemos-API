@@ -39,6 +39,8 @@ import { UpdateStaffUseCase } from './application/use-cases/update-staff.use-cas
 import { UploadLocationImageUseCase } from './application/use-cases/upload-location-image.use-case';
 import { CreateOrUpdateLocationReviewUseCase } from './application/use-cases/create-or-update-location-review.use-case';
 import { UpdateLocationReviewUseCase } from './application/use-cases/update-location-review.use-case';
+import { GeoapifyGeocodingService } from './infrastructure/geocoding/geoapify-geocoding.service';
+import { DivipolaCatalogService } from './infrastructure/divipola/divipola-catalog.service';
 
 @Module({
   controllers: [RestaurantsController],
@@ -73,6 +75,8 @@ import { UpdateLocationReviewUseCase } from './application/use-cases/update-loca
     ListLocationReviewsUseCase,
     ListPublicLocationsUseCase,
     SearchLocationsUseCase,
+    GeoapifyGeocodingService,
+    DivipolaCatalogService,
     // Los casos de uso dependen de las interfaces del dominio, no de Prisma
     // ni de Supabase Storage directamente.
     { provide: RESTAURANT_REPOSITORY, useClass: PrismaRestaurantRepository },
