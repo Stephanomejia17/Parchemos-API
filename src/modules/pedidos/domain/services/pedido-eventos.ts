@@ -18,4 +18,9 @@ export interface PedidoEventos {
   estadoActualizado(evento: EstadoPedidoActualizado): Promise<void>;
   /** GP-05 CA1: un comensal confirmó un pedido; lo recibe el personal de la sede. */
   pedidoRecibido(pedido: Pedido): Promise<void>;
+  mesaCompartidaActualizada(evento: {
+    sedeId: string;
+    mesaId: string;
+    participantes: string[];
+  }): Promise<void>;
 }

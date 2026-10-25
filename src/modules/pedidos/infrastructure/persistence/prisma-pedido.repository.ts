@@ -59,6 +59,23 @@ export class PrismaPedidoRepository implements PedidoRepository {
     return rows.map(toPedidoEnSala);
   }
 
+  async findEntregadosDeSede(
+    sedeId: string,
+    desde: Date,
+  ): Promise<PedidoEnSala[]> {
+    const rows = await this.prisma.order.findMany({
+      where: {
+        locationId: sedeId,
+        status: PedidoEstado.ENTREGADO,
+        deliveredAt: { gte: desde },
+      },
+      orderBy: { deliveredAt: 'desc' },
+      take: 100,
+      select: PEDIDO_EN_SALA_SELECT,
+    });
+    return rows.map(toPedidoEnSala);
+  }
+
   async findCuentasPendientesDeSede(
     sedeId: string,
   ): Promise<CuentaPendiente[]> {
@@ -102,6 +119,7 @@ export class PrismaPedidoRepository implements PedidoRepository {
       entregadasHoy,
       mesasConPedido,
       mesasTotales,
+      mesasConParticipantes,
     ] = await this.prisma.$transaction([
       this.prisma.order.count({
         where: {
@@ -126,12 +144,25 @@ export class PrismaPedidoRepository implements PedidoRepository {
       this.prisma.diningTable.count({
         where: { locationId: sedeId, status: 'activa' },
       }),
+      this.prisma.sharedTableParticipant.findMany({
+        where: {
+          session: {
+            status: { in: ['abierto', 'enviado'] },
+            table: { locationId: sedeId },
+          },
+        },
+        select: { session: { select: { tableId: true } } },
+      }),
+    ]);
+    const mesasOcupadas = new Set([
+      ...mesasConPedido.flatMap((mesa) => (mesa.tableId ? [mesa.tableId] : [])),
+      ...mesasConParticipantes.map(({ session }) => session.tableId),
     ]);
     return {
       ordenesHoy,
       pendientes,
       entregadasHoy,
-      mesasOcupadas: mesasConPedido.length,
+      mesasOcupadas: mesasOcupadas.size,
       mesasTotales,
     };
   }

@@ -9,6 +9,7 @@ import { toPedidoEstadoResponse } from '../http/pedido.presenter';
 import { Pedido } from '../../domain/entities/pedido.entity';
 import {
   EVENTO_ESTADO_PEDIDO,
+  EVENTO_MESA_COMPARTIDA,
   EVENTO_PEDIDO_NUEVO,
   PedidosGateway,
 } from './pedidos.gateway';
@@ -84,6 +85,26 @@ export class SocketPedidoEventos implements PedidoEventos {
       EVENTO_PEDIDO_NUEVO,
       toPedidoEstadoResponse(pedido),
     );
+    return Promise.resolve();
+  }
+
+  mesaCompartidaActualizada(evento: {
+    sedeId: string;
+    mesaId: string;
+    participantes: string[];
+  }): Promise<void> {
+    const payload = { sedeId: evento.sedeId, mesaId: evento.mesaId };
+    this.emitirASede(evento.sedeId, EVENTO_MESA_COMPARTIDA, payload);
+    try {
+      for (const userId of evento.participantes) {
+        this.gateway.emitirAUsuario(userId, EVENTO_MESA_COMPARTIDA, payload);
+      }
+    } catch (error) {
+      this.logger.error(
+        `No se pudo notificar la actualización de la mesa ${evento.mesaId}`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
     return Promise.resolve();
   }
 

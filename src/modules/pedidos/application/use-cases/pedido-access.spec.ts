@@ -83,6 +83,18 @@ describe('Restricción de cambios de estado al personal autorizado', () => {
     expect(mocks.guardarCambioDeEstado).not.toHaveBeenCalled();
   });
 
+  it('un comensal vinculado a la misma mesa no puede ver pedidos ajenos', async () => {
+    const { mocks, useCase } = setup();
+    await expect(
+      useCase.execute(
+        'pedido-1',
+        { id: 'participante-2', role: Role.COMENSAL },
+        aListo,
+      ),
+    ).rejects.toThrow('El pedido no existe.');
+    expect(mocks.guardarCambioDeEstado).not.toHaveBeenCalled();
+  });
+
   it('un repartidor no puede cambiar el estado de un pedido en sala', async () => {
     const { useCase } = setup();
     await expect(

@@ -29,6 +29,7 @@ export function mockPedidoRepository(
     findById: jest.fn().mockResolvedValue(makePedido()),
     findEnCursoDeSede: jest.fn().mockResolvedValue([]),
     findEnSalaDeSede: jest.fn().mockResolvedValue([]),
+    findEntregadosDeSede: jest.fn().mockResolvedValue([]),
     findCuentasPendientesDeSede: jest.fn().mockResolvedValue([]),
     resumenDeSede: jest.fn().mockResolvedValue({
       ordenesHoy: 0,
@@ -53,5 +54,6 @@ export function mockPedidoEventos() {
   return {
     estadoActualizado: jest.fn().mockResolvedValue(undefined),
     pedidoRecibido: jest.fn().mockResolvedValue(undefined),
+    mesaCompartidaActualizada: jest.fn().mockResolvedValue(undefined),
   };
 }

@@ -11,6 +11,7 @@ export interface ItemPedidoEnSala {
   precioUnitario: number;
   subtotal: number;
   notas: string | null;
+  agregadoPor: string | null;
 }
 
 /** GP-05 CA2: lo que el personal necesita ver de un pedido para atenderlo. */
@@ -19,6 +20,7 @@ export interface PedidoEnSala {
   mesa: MesaRef | null;
   items: ItemPedidoEnSala[];
   estadoPago: string;
+  responsablePago: string | null;
 }
 
 /** Pedido de una mesa que todavía no está pagado del todo. */

@@ -10,6 +10,7 @@ import { PrismaService } from '../../../../infrastructure/prisma/prisma.service'
 
 export const EVENTO_ESTADO_PEDIDO = 'pedido.estado';
 export const EVENTO_PEDIDO_NUEVO = 'pedido.nuevo';
+export const EVENTO_MESA_COMPARTIDA = 'mesa.compartida.actualizada';
 
 export function salaDeUsuario(userId: string): string {
   return `usuario:${userId}`;

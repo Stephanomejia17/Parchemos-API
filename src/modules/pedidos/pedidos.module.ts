@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { PedidosService } from './application/pedidos.service';
+import { SharedTableOrdersService } from './application/shared-table-orders.service';
 import { CambiarEstadoPedidoUseCase } from './application/use-cases/cambiar-estado-pedido.use-case';
 import { ConfirmarPedidoUseCase } from './application/use-cases/confirmar-pedido.use-case';
 import { ConsultarEstadoPedidoUseCase } from './application/use-cases/consultar-estado-pedido.use-case';
 import { ConsultarHistorialPedidoUseCase } from './application/use-cases/consultar-historial-pedido.use-case';
 import { ListarPedidosEnCursoDeSedeUseCase } from './application/use-cases/listar-pedidos-en-curso-de-sede.use-case';
+import { ListarPedidosEntregadosDeSedeUseCase } from './application/use-cases/listar-pedidos-entregados-de-sede.use-case';
 import { ListarPedidosEnSalaUseCase } from './application/use-cases/listar-pedidos-en-sala.use-case';
 import { ConsultarResumenSedeUseCase } from './application/use-cases/consultar-resumen-sede.use-case';
 import { PedidoAccess } from './application/use-cases/pedido-access';
@@ -19,12 +21,14 @@ import { SocketPedidoEventos } from './infrastructure/realtime/socket-pedido-eve
   controllers: [PedidosController],
   providers: [
     PedidosService,
+    SharedTableOrdersService,
     PedidoAccess,
     ConfirmarPedidoUseCase,
     ConsultarEstadoPedidoUseCase,
     CambiarEstadoPedidoUseCase,
     ConsultarHistorialPedidoUseCase,
     ListarPedidosEnCursoDeSedeUseCase,
+    ListarPedidosEntregadosDeSedeUseCase,
     ListarPedidosEnSalaUseCase,
     ConsultarResumenSedeUseCase,
     PedidosGateway,
