@@ -73,6 +73,29 @@ Las reglas que Prisma no modela (CHECKs, triggers, RLS) viven en
 > `datasource` del config no acepta `directUrl` y lo ignora en silencio, por eso
 > `prisma.config.ts` asigna `url: DIRECT_URL`.
 
+## Pedidos desde QR y ocupación de mesas
+
+Escanear el QR solo valida la mesa y carga el menú: no inicia sesión compartida
+ni vincula al comensal. El carrito se conserva en el navegador mientras consulta
+el menú y al seleccionar la mesa en el paso de confirmación.
+
+Al crear un pedido en mesa, `POST /pedidos` vuelve a validar que la sede esté
+activa y que la mesa activa pertenezca a esa sede. En la misma transacción crea
+o reutiliza la sesión de ocupación, vincula al comensal sin duplicarlo y guarda
+el pedido y sus observaciones. Los participantes de la ocupación activa pueden
+consultar el seguimiento de esos pedidos; el autor sigue registrado en cada
+pedido.
+
+La sesión no expira por tiempo ni por terminar un pedido. El personal autorizado
+la finaliza mediante `POST /pedidos/mesas/:tableId/cerrar-ocupacion`, después de
+recibir presencialmente el pago y cuando todos los pedidos estén entregados o
+cancelados. La acción registra como efectivo el saldo pendiente y cierra la
+ocupación; no procesa pagos digitales. La sesión y los pedidos se conservan
+como historial y la próxima vinculación inicia una ocupación aislada.
+El panel de sala consulta los pedidos entregados de la jornada mediante
+`GET /pedidos/sede/:sedeId/entregados-hoy`; el acceso se limita al personal
+autorizado de esa sede y el día se calcula con la hora de Bogotá.
+
 ## Recuperación de contraseña con Brevo
 
 La autenticación continúa siendo propia de la API. Supabase almacena los

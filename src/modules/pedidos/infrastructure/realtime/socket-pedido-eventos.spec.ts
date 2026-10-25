@@ -16,7 +16,9 @@ function setup(
   notificationCreate = jest.fn().mockResolvedValue({ id: 'n-1' }),
 ) {
   const gateway = { emitirAUsuario: jest.fn(), emitirASede: jest.fn() };
-  const prisma = { notification: { create: notificationCreate } };
+  const prisma = {
+    notification: { create: notificationCreate },
+  };
   const eventos = new SocketPedidoEventos(
     gateway as unknown as PedidosGateway,
     prisma as unknown as PrismaService,
@@ -54,6 +56,7 @@ describe('SocketPedidoEventos', () => {
         notificacionId: 'n-1',
       }),
     );
+    expect(gateway.emitirAUsuario).toHaveBeenCalledTimes(1);
   });
 
   it('no avisa al comensal de un cambio que hizo él mismo', async () => {

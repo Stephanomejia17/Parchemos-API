@@ -30,8 +30,15 @@ export function toPedidoEnSalaResponse({
   mesa,
   items,
   estadoPago,
+  responsablePago,
 }: PedidoEnSala) {
-  return { ...toPedidoEstadoResponse(pedido), mesa, estadoPago, items };
+  return {
+    ...toPedidoEstadoResponse(pedido),
+    mesa,
+    estadoPago,
+    responsablePago,
+    items,
+  };
 }
 
 export function toMesaConPedidosResponse({

@@ -21,6 +21,8 @@ export interface PedidoRepository {
   findEnCursoDeSede(sedeId: string): Promise<Pedido[]>;
   /** GP-05: pedidos en curso de la sede con su mesa y sus productos. */
   findEnSalaDeSede(sedeId: string): Promise<PedidoEnSala[]>;
+  /** Pedidos entregados en la sede desde el inicio del día indicado. */
+  findEntregadosDeSede(sedeId: string, desde: Date): Promise<PedidoEnSala[]>;
   /**
    * GP-05 CA3: pedidos con mesa de la sede que no están pagados del todo
    * (sin borradores ni cancelados), con lo que ya se abonó de cada uno.

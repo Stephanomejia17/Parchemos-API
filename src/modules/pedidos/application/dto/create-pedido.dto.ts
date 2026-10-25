@@ -4,7 +4,9 @@ import {
   IsArray,
   IsInt,
   IsOptional,
+  IsString,
   IsUUID,
+  MaxLength,
   Max,
   Min,
   ValidateNested,
@@ -19,6 +21,11 @@ export class CreatePedidoItemDto {
   @Min(1)
   @Max(100)
   quantity!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  notes?: string;
 }
 
 export class CreatePedidoDto {

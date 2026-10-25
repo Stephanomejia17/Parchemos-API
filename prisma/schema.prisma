@@ -286,36 +286,36 @@ enum ReportStatus {
 /// Cuenta de acceso a la plataforma. Solo identidad, credenciales y estado:
 /// los datos personales estan en [UserProfile].
 model User {
-  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Correo unico en toda la plataforma, case-insensitive (GU-01 Esc. 3).
-  email               String        @unique @db.Citext
+  email             String   @unique @db.Citext
   /// Hash Argon2id/bcrypt. Nunca la contrasena en texto plano. Nulo cuando la
   /// cuenta se creo via Supabase Auth: el password vive solo alla.
-  passwordHash        String?       @map("password_hash")
-  passwordUpdatedAt   DateTime      @default(now()) @map("password_updated_at") @db.Timestamptz(6)
+  passwordHash      String?  @map("password_hash")
+  passwordUpdatedAt DateTime @default(now()) @map("password_updated_at") @db.Timestamptz(6)
 
-  role                UserRole
-  status              AccountStatus @default(activa)
+  role             UserRole
+  status           AccountStatus @default(activa)
   /// Obligatorio cuando status = suspendida (GU-02 Esc. 3 / GU-07).
-  suspensionReason    String?       @map("suspension_reason")
-  statusChangedAt     DateTime      @default(now()) @map("status_changed_at") @db.Timestamptz(6)
+  suspensionReason String?       @map("suspension_reason")
+  statusChangedAt  DateTime      @default(now()) @map("status_changed_at") @db.Timestamptz(6)
 
   /// Aceptacion de terminos y politica de datos (GU-01 Esc. 6).
-  termsAcceptedAt     DateTime      @map("terms_accepted_at") @db.Timestamptz(6)
-  termsVersion        String        @default("1.0") @map("terms_version")
-  privacyAcceptedAt   DateTime      @map("privacy_accepted_at") @db.Timestamptz(6)
+  termsAcceptedAt   DateTime @map("terms_accepted_at") @db.Timestamptz(6)
+  termsVersion      String   @default("1.0") @map("terms_version")
+  privacyAcceptedAt DateTime @map("privacy_accepted_at") @db.Timestamptz(6)
 
   /// Bloqueo temporal por intentos fallidos (GU-02 Esc. 4).
-  failedLoginAttempts Int           @default(0) @map("failed_login_attempts") @db.SmallInt
-  lockedUntil         DateTime?     @map("locked_until") @db.Timestamptz(6)
-  lastLoginAt         DateTime?     @map("last_login_at") @db.Timestamptz(6)
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts") @db.SmallInt
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt         DateTime? @map("last_login_at") @db.Timestamptz(6)
 
   /// Solicitud de eliminacion de cuenta y fecha en que se hace efectiva.
-  deletionRequestedAt DateTime?     @map("deletion_requested_at") @db.Timestamptz(6)
-  deletionEffectiveAt DateTime?     @map("deletion_effective_at") @db.Timestamptz(6)
+  deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz(6)
+  deletionEffectiveAt DateTime? @map("deletion_effective_at") @db.Timestamptz(6)
 
-  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   profile             UserProfile?
   preferences         UserPreference?
@@ -331,28 +331,32 @@ model User {
   notifications       Notification[]
   auditLogs           AuditLog[]
 
-  restaurants         Restaurant[]
-  staffAssignments    RestaurantStaff[]
-  surveys             Survey[]
-  surveyResponses     SurveyResponse[]
+  restaurants             Restaurant[]
+  staffAssignments        RestaurantStaff[]
+  surveys                 Survey[]
+  surveyResponses         SurveyResponse[]
+  sharedTableOrdersPaid   SharedTableOrder[]       @relation("SharedTableOrderPayer")
+  sharedTableParticipants SharedTableParticipant[]
+  contributedOrderItems   OrderItem[]              @relation("OrderItemContributor")
+  sharedTableOrderItems   SharedTableOrderItem[]
 
-  favorites           Favorite[]
-  posts               Post[]                @relation("PostAuthor")
-  moderatedPosts      Post[]                @relation("PostModerator")
-  postLikes           PostLike[]
-  postViews           PostView[]
-  locationReviews     LocationReview[]
-  productReviews      ProductReview[]
-  reportsFiled        ContentReport[]       @relation("ReportReporter")
-  reportsResolved     ContentReport[]       @relation("ReportResolver")
+  favorites       Favorite[]
+  posts           Post[]           @relation("PostAuthor")
+  moderatedPosts  Post[]           @relation("PostModerator")
+  postLikes       PostLike[]
+  postViews       PostView[]
+  locationReviews LocationReview[]
+  productReviews  ProductReview[]
+  reportsFiled    ContentReport[]  @relation("ReportReporter")
+  reportsResolved ContentReport[]  @relation("ReportResolver")
 
-  reservations        Reservation[]         @relation("ReservationDiner")
-  reservationsCancelled Reservation[]       @relation("ReservationCanceller")
+  reservations             Reservation[]              @relation("ReservationDiner")
+  reservationsCancelled    Reservation[]              @relation("ReservationCanceller")
   reservationStatusChanges ReservationStatusHistory[]
 
-  orders              Order[]               @relation("OrderDiner")
-  ordersTakenAsStaff  Order[]               @relation("OrderStaff")
-  ordersAsCourier     Order[]               @relation("OrderCourier")
+  orders              Order[]              @relation("OrderDiner")
+  ordersTakenAsStaff  Order[]              @relation("OrderStaff")
+  ordersAsCourier     Order[]              @relation("OrderCourier")
   orderStatusChanges  OrderStatusHistory[]
   payments            Payment[]
   deliveryAssignments DeliveryAssignment[]
@@ -367,8 +371,8 @@ model User {
 /// tabla que se lee en cada autenticacion y porque este bloque crece con el
 /// producto (PU-02, PU-03).
 model UserProfile {
-  userId    String    @id @map("user_id") @db.Uuid
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @id @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   fullName  String    @map("full_name")
   phone     String?
@@ -378,31 +382,31 @@ model UserProfile {
   birthDate DateTime? @map("birth_date") @db.Date
   bio       String?
 
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@map("user_profiles")
 }
 
 /// Refresh tokens vigentes. El logout marca revokedAt (GU-02 Esc. 5 y 6).
 model Session {
-  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String               @map("user_id") @db.Uuid
-  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// SHA-256 del refresh token. El valor en claro solo lo conoce el cliente.
-  refreshTokenHash String               @unique @map("refresh_token_hash")
+  refreshTokenHash String @unique @map("refresh_token_hash")
 
-  issuedAt         DateTime             @default(now()) @map("issued_at") @db.Timestamptz(6)
-  expiresAt        DateTime             @map("expires_at") @db.Timestamptz(6)
-  lastUsedAt       DateTime?            @map("last_used_at") @db.Timestamptz(6)
+  issuedAt   DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
 
-  revokedAt        DateTime?            @map("revoked_at") @db.Timestamptz(6)
-  revokedReason    SessionRevokeReason? @map("revoked_reason")
+  revokedAt     DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  revokedReason SessionRevokeReason? @map("revoked_reason")
 
-  ipAddress        String?              @map("ip_address") @db.Inet
-  userAgent        String?              @map("user_agent")
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  ipAddress String?  @map("ip_address") @db.Inet
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId])
   @@index([userId, expiresAt], map: "sessions_activas_idx", where: raw("(revoked_at IS NULL)"))
@@ -412,19 +416,19 @@ model Session {
 /// Bitacora de intentos de inicio de sesion, base del bloqueo temporal
 /// y de la auditoria de accesos (GU-02 Esc. 2 y 4).
 model LoginAttempt {
-  id             BigInt   @id @default(autoincrement())
+  id BigInt @id @default(autoincrement())
 
   /// Se guarda aunque el correo no exista, para limitar por identificador
   /// sin revelar si esta registrado.
-  emailAttempted String   @map("email_attempted") @db.Citext
-  userId         String?  @map("user_id") @db.Uuid
-  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  emailAttempted String  @map("email_attempted") @db.Citext
+  userId         String? @map("user_id") @db.Uuid
+  user           User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  successful     Boolean
-  failureReason  String?  @map("failure_reason")
-  ipAddress      String?  @map("ip_address") @db.Inet
-  userAgent      String?  @map("user_agent")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  successful    Boolean
+  failureReason String?  @map("failure_reason")
+  ipAddress     String?  @map("ip_address") @db.Inet
+  userAgent     String?  @map("user_agent")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([emailAttempted, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
@@ -495,11 +499,11 @@ model Notification {
 /// Catalogo de tipos de cocina. Alimenta el filtro por categoria (MB-01) y las
 /// preferencias del comensal (PU-02).
 model CuisineType {
-  id          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug        String                  @unique @db.Citext
-  name        String
-  isActive    Boolean                 @default(true) @map("is_active")
-  createdAt   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug      String   @unique @db.Citext
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   locations   LocationCuisine[]
   preferredBy UserCuisinePreference[]
@@ -509,13 +513,13 @@ model CuisineType {
 
 /// Restricciones alimentarias declarables por el comensal (PU-02 Esc. 3).
 model DietaryRestriction {
-  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug       String                   @unique @db.Citext
-  name       String
-  isActive   Boolean                  @default(true) @map("is_active")
-  createdAt  DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug      String   @unique @db.Citext
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  users      UserDietaryRestriction[]
+  users UserDietaryRestriction[]
 
   @@map("dietary_restrictions")
 }
@@ -569,7 +573,7 @@ model UserAddress {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  orders      Order[]
+  orders Order[]
 
   @@unique([userId], map: "user_addresses_one_default_idx", where: raw("is_default"))
   @@index([userId], map: "user_addresses_user_idx")
@@ -582,23 +586,23 @@ model UserAddress {
 
 /// Empresa propietaria de una o varias sedes (PU-06 multi-sede).
 model Restaurant {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerId        String       @map("owner_id") @db.Uuid
-  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  businessName   String       @map("business_name")
-  legalName      String?      @map("legal_name")
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId        String   @map("owner_id") @db.Uuid
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  businessName   String   @map("business_name")
+  legalName      String?  @map("legal_name")
   /// NIT o identificacion tributaria.
-  taxId          String?      @map("tax_id")
+  taxId          String?  @map("tax_id")
   /// Comision pactada con la plataforma, entre 0 y 1 (AE-01, AE-02).
-  commissionRate Decimal      @default(0.1000) @map("commission_rate") @db.Decimal(6, 4)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  commissionRate Decimal  @default(0.1000) @map("commission_rate") @db.Decimal(6, 4)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  locations      Location[]
-  products       Product[]
-  orders         Order[]
-  commissions    Commission[]
-  surveys        SurveyRestaurant[]
+  locations       Location[]
+  products        Product[]
+  orders          Order[]
+  commissions     Commission[]
+  surveys         SurveyRestaurant[]
   surveyResponses SurveyResponse[]
 
   @@unique([taxId], map: "restaurants_tax_id_key", where: raw("(tax_id IS NOT NULL)"))
@@ -609,51 +613,51 @@ model Restaurant {
 /// Sede (establecimiento fisico). Es la unidad que el comensal ve, califica,
 /// reserva y a la que pide (AN-01, PU-06, PU-08).
 model Location {
-  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  restaurantId    String                    @map("restaurant_id") @db.Uuid
-  restaurant      Restaurant                @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
-  name            String
-  description     String?
-  address         String
-  phone           String?
-  latitude        Float?
-  longitude       Float?
+  name        String
+  description String?
+  address     String
+  phone       String?
+  latitude    Float?
+  longitude   Float?
   /// Punto geografico derivado de latitude/longitude por trigger. Las consultas
   /// por cercania (DO-01) usan el indice GiST sobre esta columna via SQL crudo.
-  geog            Unsupported("geography")?
+  geog        Unsupported("geography")?
 
   /// URL publica o clave del objeto en el bucket. Nunca base64.
-  logoUrl         String?                   @map("logo_url")
-  coverUrl        String?                   @map("cover_url")
+  logoUrl  String? @map("logo_url")
+  coverUrl String? @map("cover_url")
 
   /// Rango de precio 1..4 ($..$$$$) para el filtro de MB-01.
-  priceRange      Int?                      @map("price_range") @db.SmallInt
+  priceRange  Int?    @map("price_range") @db.SmallInt
   /// Agregados de LocationReview mantenidos por trigger (DO-02, RC-01).
-  avgRating       Decimal                   @default(0) @map("avg_rating") @db.Decimal(3, 2)
-  ratingCount     Int                       @default(0) @map("rating_count")
+  avgRating   Decimal @default(0) @map("avg_rating") @db.Decimal(3, 2)
+  ratingCount Int     @default(0) @map("rating_count")
 
-  status          LocationStatus            @default(pendiente_aprobacion)
-  rejectionReason String?                   @map("rejection_reason")
-  approvedAt      DateTime?                 @map("approved_at") @db.Timestamptz(6)
-  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  status          LocationStatus @default(pendiente_aprobacion)
+  rejectionReason String?        @map("rejection_reason")
+  approvedAt      DateTime?      @map("approved_at") @db.Timestamptz(6)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  schedules       LocationSchedule[]
-  images          LocationImage[]
-  cuisines        LocationCuisine[]
-  menu            LocationProduct[]
-  staff           RestaurantStaff[]
-  tables          DiningTable[]
-  discounts       Discount[]
-  reservations    Reservation[]
-  orders          Order[]
-  bills           Bill[]
-  reviews         LocationReview[]
-  favorites       Favorite[]
-  posts           Post[]
-  loyaltyRewards  LoyaltyReward[]
-  commissions     Commission[]
+  schedules      LocationSchedule[]
+  images         LocationImage[]
+  cuisines       LocationCuisine[]
+  menu           LocationProduct[]
+  staff          RestaurantStaff[]
+  tables         DiningTable[]
+  discounts      Discount[]
+  reservations   Reservation[]
+  orders         Order[]
+  bills          Bill[]
+  reviews        LocationReview[]
+  favorites      Favorite[]
+  posts          Post[]
+  loyaltyRewards LoyaltyReward[]
+  commissions    Commission[]
 
   @@unique([id, restaurantId], map: "locations_id_restaurant_key")
   @@index([restaurantId])
@@ -710,18 +714,18 @@ model LocationCuisine {
 /// Vinculo entre una cuenta personal_restaurante y las sedes donde opera
 /// (GU-05). Revocar el acceso conserva el historial (PARCHE-286).
 model RestaurantStaff {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  locationId String    @map("location_id") @db.Uuid
-  location   Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String       @map("location_id") @db.Uuid
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
   /// Funcion del miembro dentro del personal de sala (caja, mesero, etc.).
   position   StaffSubRole @default(caja)
-  isActive   Boolean   @default(true) @map("is_active")
-  hiredAt    DateTime  @default(now()) @map("hired_at") @db.Timestamptz(6)
-  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  isActive   Boolean      @default(true) @map("is_active")
+  hiredAt    DateTime     @default(now()) @map("hired_at") @db.Timestamptz(6)
+  revokedAt  DateTime?    @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@unique([userId, locationId], map: "restaurant_staff_user_location_key")
   @@index([locationId], map: "restaurant_staff_location_idx", where: raw("is_active"))
@@ -732,27 +736,28 @@ model RestaurantStaff {
 /// Catalogo maestro de platos del negocio (AN-02). La disponibilidad y el
 /// precio por sede se resuelven en [LocationProduct] (AN-03).
 model Product {
-  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  restaurantId  String            @map("restaurant_id") @db.Uuid
-  restaurant    Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  restaurantId String          @map("restaurant_id") @db.Uuid
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
   /// URL publica o clave del objeto en el bucket. Nunca base64.
-  imageUrl      String?           @map("image_url")
-  category      ProductCategory
-  price         Decimal           @db.Decimal(12, 2)
-  status        ProductStatus     @default(activo)
-  featured      Boolean           @default(false)
+  imageUrl     String?         @map("image_url")
+  category     ProductCategory
+  price        Decimal         @db.Decimal(12, 2)
+  status       ProductStatus   @default(activo)
+  featured     Boolean         @default(false)
   /// Agregados de ProductReview mantenidos por trigger (RC-02).
-  avgRating     Decimal           @default(0) @map("avg_rating") @db.Decimal(3, 2)
-  ratingCount   Int               @default(0) @map("rating_count")
-  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  avgRating    Decimal         @default(0) @map("avg_rating") @db.Decimal(3, 2)
+  ratingCount  Int             @default(0) @map("rating_count")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  availability  LocationProduct[]
-  discounts     DiscountProduct[]
-  reviews       ProductReview[]
-  orderItems    OrderItem[]
+  availability     LocationProduct[]
+  discounts        DiscountProduct[]
+  reviews          ProductReview[]
+  orderItems       OrderItem[]
+  sharedOrderItems SharedTableOrderItem[]
 
   @@unique([id, restaurantId], map: "products_id_restaurant_key")
   @@index([restaurantId, status])
@@ -765,17 +770,17 @@ model Product {
 /// Disponibilidad y precio del plato en cada sede (AN-03). Las FK compuestas
 /// impiden asociar un producto a la sede de otro restaurante.
 model LocationProduct {
-  locationId        String     @map("location_id") @db.Uuid
-  productId         String     @map("product_id") @db.Uuid
-  restaurantId      String     @map("restaurant_id") @db.Uuid
-  location          Location   @relation(fields: [locationId, restaurantId], references: [id, restaurantId], onDelete: Cascade, map: "location_products_location_fk")
-  product           Product    @relation(fields: [productId, restaurantId], references: [id, restaurantId], onDelete: Cascade, map: "location_products_product_fk")
+  locationId   String   @map("location_id") @db.Uuid
+  productId    String   @map("product_id") @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  location     Location @relation(fields: [locationId, restaurantId], references: [id, restaurantId], onDelete: Cascade, map: "location_products_location_fk")
+  product      Product  @relation(fields: [productId, restaurantId], references: [id, restaurantId], onDelete: Cascade, map: "location_products_product_fk")
 
-  isAvailable       Boolean    @default(true) @map("is_available")
+  isAvailable       Boolean  @default(true) @map("is_available")
   /// Precio propio de la sede. Nulo = usa Product.price.
-  priceOverride     Decimal?   @map("price_override") @db.Decimal(12, 2)
-  unavailableReason String?    @map("unavailable_reason")
-  updatedAt         DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  priceOverride     Decimal? @map("price_override") @db.Decimal(12, 2)
+  unavailableReason String?  @map("unavailable_reason")
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@id([locationId, productId])
   @@index([locationId], map: "location_products_available_idx", where: raw("is_available"))
@@ -785,19 +790,20 @@ model LocationProduct {
 /// Mesas de la sede y su capacidad (AN-05). qrToken identifica la mesa al
 /// escanear el codigo QR (GP-04).
 model DiningTable {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId   String        @map("location_id") @db.Uuid
-  location     Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  code         String
-  capacity     Int           @db.SmallInt
-  status       TableStatus   @default(activa)
-  qrToken      String        @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex'::text)")) @map("qr_token")
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String      @map("location_id") @db.Uuid
+  location   Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  code       String
+  capacity   Int         @db.SmallInt
+  status     TableStatus @default(activa)
+  qrToken    String      @unique @default(dbgenerated("encode(gen_random_bytes(16), 'hex'::text)")) @map("qr_token")
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   reservations Reservation[]
   orders       Order[]
   bills        Bill[]
+  sharedOrders SharedTableOrder[]
 
   @@unique([locationId, code], map: "dining_tables_code_key")
   @@unique([id, locationId], map: "dining_tables_id_location_key")
@@ -807,21 +813,21 @@ model DiningTable {
 
 /// Promociones con vigencia, activables y destacables en el perfil (AN-04).
 model Discount {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId  String            @map("location_id") @db.Uuid
-  location    Location          @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId  String       @map("location_id") @db.Uuid
+  location    Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
   name        String
   description String?
   type        DiscountType
-  value       Decimal           @db.Decimal(12, 2)
-  startsAt    DateTime          @map("starts_at") @db.Timestamptz(6)
-  endsAt      DateTime          @map("ends_at") @db.Timestamptz(6)
-  isActive    Boolean           @default(true) @map("is_active")
-  isFeatured  Boolean           @default(false) @map("is_featured")
-  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  value       Decimal      @db.Decimal(12, 2)
+  startsAt    DateTime     @map("starts_at") @db.Timestamptz(6)
+  endsAt      DateTime     @map("ends_at") @db.Timestamptz(6)
+  isActive    Boolean      @default(true) @map("is_active")
+  isFeatured  Boolean      @default(false) @map("is_featured")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  products    DiscountProduct[]
+  products DiscountProduct[]
 
   @@index([locationId], map: "discounts_featured_idx", where: raw("is_featured"))
   @@index([locationId, startsAt, endsAt], map: "discounts_location_period_idx", where: raw("is_active"))
@@ -844,30 +850,30 @@ model DiscountProduct {
 // ============================================================================
 
 model Reservation {
-  id                 String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId         String                     @map("location_id") @db.Uuid
-  location           Location                   @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  dinerId            String                     @map("diner_id") @db.Uuid
-  diner              User                       @relation("ReservationDiner", fields: [dinerId], references: [id], onDelete: Restrict)
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String       @map("location_id") @db.Uuid
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  dinerId    String       @map("diner_id") @db.Uuid
+  diner      User         @relation("ReservationDiner", fields: [dinerId], references: [id], onDelete: Restrict)
   /// La FK compuesta garantiza que la mesa pertenezca a la sede de la reserva.
-  tableId            String?                    @map("table_id") @db.Uuid
-  table              DiningTable?               @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "reservations_table_fk")
+  tableId    String?      @map("table_id") @db.Uuid
+  table      DiningTable? @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "reservations_table_fk")
 
-  reservedFor        DateTime                   @map("reserved_for") @db.Timestamptz(6)
-  partySize          Int                        @map("party_size") @db.SmallInt
-  status             ReservationStatus          @default(confirmada)
-  notes              String?
+  reservedFor DateTime          @map("reserved_for") @db.Timestamptz(6)
+  partySize   Int               @map("party_size") @db.SmallInt
+  status      ReservationStatus @default(confirmada)
+  notes       String?
 
-  confirmedAt        DateTime?                  @map("confirmed_at") @db.Timestamptz(6)
-  cancelledAt        DateTime?                  @map("cancelled_at") @db.Timestamptz(6)
-  cancelledById      String?                    @map("cancelled_by") @db.Uuid
-  cancelledBy        User?                      @relation("ReservationCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
-  cancellationReason String?                    @map("cancellation_reason")
+  confirmedAt        DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelledById      String?   @map("cancelled_by") @db.Uuid
+  cancelledBy        User?     @relation("ReservationCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  cancellationReason String?   @map("cancellation_reason")
 
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  statusHistory      ReservationStatusHistory[]
+  statusHistory       ReservationStatusHistory[]
   loyaltyTransactions LoyaltyTransaction[]
 
   @@unique([tableId, reservedFor], map: "reservations_table_slot_idx", where: raw("((table_id IS NOT NULL) AND (status = ANY (ARRAY['pendiente'::reservation_status, 'confirmada'::reservation_status])))"))
@@ -879,18 +885,18 @@ model Reservation {
 
 /// Encuesta configurable por el propietario y reutilizable en sus restaurantes.
 model Survey {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerId     String    @map("owner_id") @db.Uuid
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  title       String    @default("Encuesta de satisfacción")
-  isActive    Boolean   @default(false) @map("is_active")
-  version     Int       @default(1)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String   @default("Encuesta de satisfacción")
+  isActive  Boolean  @default(false) @map("is_active")
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   assignments SurveyRestaurant[]
-  questions  SurveyQuestion[]
-  responses  SurveyResponse[]
+  questions   SurveyQuestion[]
+  responses   SurveyResponse[]
 
   @@map("surveys")
 }
@@ -908,17 +914,17 @@ model SurveyRestaurant {
 }
 
 model SurveyQuestion {
-  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  surveyId    String             @map("survey_id") @db.Uuid
-  survey      Survey             @relation(fields: [surveyId], references: [id], onDelete: Cascade)
-  prompt      String
-  type        SurveyQuestionType
-  required    Boolean            @default(false)
-  position    Int
-  options     Json               @default("[]")
-  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
-  answers     SurveyAnswer[]
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId  String             @map("survey_id") @db.Uuid
+  survey    Survey             @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  prompt    String
+  type      SurveyQuestionType
+  required  Boolean            @default(false)
+  position  Int
+  options   Json               @default("[]")
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  answers   SurveyAnswer[]
 
   @@unique([surveyId, position], map: "survey_questions_position_key")
   @@index([surveyId, position])
@@ -926,20 +932,20 @@ model SurveyQuestion {
 }
 
 model SurveyResponse {
-  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  surveyId        String             @map("survey_id") @db.Uuid
-  survey          Survey             @relation(fields: [surveyId], references: [id], onDelete: Restrict)
-  restaurantId    String             @map("restaurant_id") @db.Uuid
-  restaurant      Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
-  orderId         String             @map("order_id") @db.Uuid
-  order           Order              @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  dinerId         String             @map("diner_id") @db.Uuid
-  diner           User               @relation(fields: [dinerId], references: [id], onDelete: Restrict)
-  surveyVersion   Int                @map("survey_version")
-  status          SurveyResponseStatus @default(respondida)
-  questionsSnapshot Json             @map("questions_snapshot")
-  submittedAt     DateTime           @default(now()) @map("submitted_at") @db.Timestamptz(6)
-  answers         SurveyAnswer[]
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId          String               @map("survey_id") @db.Uuid
+  survey            Survey               @relation(fields: [surveyId], references: [id], onDelete: Restrict)
+  restaurantId      String               @map("restaurant_id") @db.Uuid
+  restaurant        Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  orderId           String               @map("order_id") @db.Uuid
+  order             Order                @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  dinerId           String               @map("diner_id") @db.Uuid
+  diner             User                 @relation(fields: [dinerId], references: [id], onDelete: Restrict)
+  surveyVersion     Int                  @map("survey_version")
+  status            SurveyResponseStatus @default(respondida)
+  questionsSnapshot Json                 @map("questions_snapshot")
+  submittedAt       DateTime             @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  answers           SurveyAnswer[]
 
   @@unique([orderId, surveyId], map: "survey_responses_order_survey_key")
   @@index([restaurantId, submittedAt])
@@ -948,14 +954,14 @@ model SurveyResponse {
 }
 
 model SurveyAnswer {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  responseId      String          @map("response_id") @db.Uuid
-  response        SurveyResponse  @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  questionId      String?         @map("question_id") @db.Uuid
-  question        SurveyQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
-  questionPrompt  String          @map("question_prompt")
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  responseId      String             @map("response_id") @db.Uuid
+  response        SurveyResponse     @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId      String?            @map("question_id") @db.Uuid
+  question        SurveyQuestion?    @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  questionPrompt  String             @map("question_prompt")
   questionType    SurveyQuestionType @map("question_type")
-  optionsSnapshot Json            @map("options_snapshot")
+  optionsSnapshot Json               @map("options_snapshot")
   value           String
 
   @@unique([responseId, questionPrompt], map: "survey_answers_response_prompt_key")
@@ -986,22 +992,22 @@ model ReservationStatusHistory {
 /// Cuenta de una mesa: agrupa varios pedidos para dividir el pago (GP-07).
 /// totalAmount y paidAmount los mantienen triggers.
 model Bill {
-  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId  String       @map("location_id") @db.Uuid
-  location    Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  tableId     String?      @map("table_id") @db.Uuid
-  table       DiningTable? @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "bills_table_fk")
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String       @map("location_id") @db.Uuid
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  tableId    String?      @map("table_id") @db.Uuid
+  table      DiningTable? @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "bills_table_fk")
 
-  status      BillStatus   @default(abierta)
-  totalAmount Decimal      @default(0) @map("total_amount") @db.Decimal(12, 2)
-  paidAmount  Decimal      @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  openedAt    DateTime     @default(now()) @map("opened_at") @db.Timestamptz(6)
-  closedAt    DateTime?    @map("closed_at") @db.Timestamptz(6)
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  status      BillStatus @default(abierta)
+  totalAmount Decimal    @default(0) @map("total_amount") @db.Decimal(12, 2)
+  paidAmount  Decimal    @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  openedAt    DateTime   @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt    DateTime?  @map("closed_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  orders      Order[]
-  payments    Payment[]
+  orders   Order[]
+  payments Payment[]
 
   @@unique([tableId], map: "bills_open_per_table_idx", where: raw("((table_id IS NOT NULL) AND (status = ANY (ARRAY['abierta'::bill_status, 'parcial'::bill_status])))"))
   @@index([locationId, openedAt(sort: Desc)], map: "bills_location_open_idx", where: raw("(status <> 'conciliada'::bill_status)"))
@@ -1011,57 +1017,57 @@ model Bill {
 /// Pedido de un comensal en una sede (GP-01..GP-10).
 /// subtotal y total los recalcula un trigger a partir de [OrderItem].
 model Order {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Consecutivo legible para el personal de sala.
-  orderNumber         BigInt                @unique @default(autoincrement()) @map("order_number")
+  orderNumber BigInt @unique @default(autoincrement()) @map("order_number")
 
-  locationId          String                @map("location_id") @db.Uuid
-  restaurantId        String                @map("restaurant_id") @db.Uuid
+  locationId   String     @map("location_id") @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
   /// FK compuesta: la sede debe pertenecer al restaurante indicado.
-  location            Location              @relation(fields: [locationId, restaurantId], references: [id, restaurantId], map: "orders_location_fk")
-  restaurant          Restaurant            @relation(fields: [restaurantId], references: [id], onDelete: Restrict, map: "orders_restaurant_fk")
+  location     Location   @relation(fields: [locationId, restaurantId], references: [id, restaurantId], map: "orders_location_fk")
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict, map: "orders_restaurant_fk")
 
-  billId              String?               @map("bill_id") @db.Uuid
-  bill                Bill?                 @relation(fields: [billId], references: [id], onDelete: SetNull)
+  billId String? @map("bill_id") @db.Uuid
+  bill   Bill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
 
-  dinerId             String?               @map("diner_id") @db.Uuid
-  diner               User?                 @relation("OrderDiner", fields: [dinerId], references: [id], onDelete: SetNull)
-  createdByStaffId    String?               @map("created_by_staff_id") @db.Uuid
-  createdByStaff      User?                 @relation("OrderStaff", fields: [createdByStaffId], references: [id], onDelete: SetNull)
-  courierId           String?               @map("courier_id") @db.Uuid
-  courier             User?                 @relation("OrderCourier", fields: [courierId], references: [id], onDelete: SetNull)
+  dinerId          String? @map("diner_id") @db.Uuid
+  diner            User?   @relation("OrderDiner", fields: [dinerId], references: [id], onDelete: SetNull)
+  createdByStaffId String? @map("created_by_staff_id") @db.Uuid
+  createdByStaff   User?   @relation("OrderStaff", fields: [createdByStaffId], references: [id], onDelete: SetNull)
+  courierId        String? @map("courier_id") @db.Uuid
+  courier          User?   @relation("OrderCourier", fields: [courierId], references: [id], onDelete: SetNull)
 
   /// GP-04: mesa identificada por el QR. FK compuesta contra la sede.
-  tableId             String?               @map("table_id") @db.Uuid
-  table               DiningTable?          @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "orders_table_fk")
+  tableId String?      @map("table_id") @db.Uuid
+  table   DiningTable? @relation(fields: [tableId, locationId], references: [id, locationId], onDelete: Restrict, map: "orders_table_fk")
 
-  fulfillment         OrderFulfillment
-  status              OrderStatus           @default(borrador)
-  paymentStatus       OrderPaymentStatus    @default(pendiente) @map("payment_status")
+  fulfillment   OrderFulfillment
+  status        OrderStatus        @default(borrador)
+  paymentStatus OrderPaymentStatus @default(pendiente) @map("payment_status")
 
-  subtotal            Decimal               @default(0) @db.Decimal(12, 2)
-  discountTotal       Decimal               @default(0) @map("discount_total") @db.Decimal(12, 2)
-  deliveryFee         Decimal               @default(0) @map("delivery_fee") @db.Decimal(12, 2)
-  total               Decimal               @default(0) @db.Decimal(12, 2)
-  currency            String                @default("COP") @db.Char(3)
+  subtotal      Decimal @default(0) @db.Decimal(12, 2)
+  discountTotal Decimal @default(0) @map("discount_total") @db.Decimal(12, 2)
+  deliveryFee   Decimal @default(0) @map("delivery_fee") @db.Decimal(12, 2)
+  total         Decimal @default(0) @db.Decimal(12, 2)
+  currency      String  @default("COP") @db.Char(3)
 
   /// Referencia a la libreta y copia de la direccion: el pedido conserva a
   /// donde se envio aunque el comensal borre la direccion (GP-03, GP-10).
-  deliveryAddressId   String?               @map("delivery_address_id") @db.Uuid
-  deliveryAddress     UserAddress?          @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull)
-  deliveryAddressLine String?               @map("delivery_address_line")
-  deliveryDetails     String?               @map("delivery_details")
-  deliveryCity        String?               @map("delivery_city")
-  deliveryLatitude    Float?                @map("delivery_latitude")
-  deliveryLongitude   Float?                @map("delivery_longitude")
+  deliveryAddressId   String?      @map("delivery_address_id") @db.Uuid
+  deliveryAddress     UserAddress? @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull)
+  deliveryAddressLine String?      @map("delivery_address_line")
+  deliveryDetails     String?      @map("delivery_details")
+  deliveryCity        String?      @map("delivery_city")
+  deliveryLatitude    Float?       @map("delivery_latitude")
+  deliveryLongitude   Float?       @map("delivery_longitude")
 
-  notes               String?
-  placedAt            DateTime?             @map("placed_at") @db.Timestamptz(6)
-  deliveredAt         DateTime?             @map("delivered_at") @db.Timestamptz(6)
-  cancelledAt         DateTime?             @map("cancelled_at") @db.Timestamptz(6)
-  cancellationReason  String?               @map("cancellation_reason")
-  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  notes              String?
+  placedAt           DateTime? @map("placed_at") @db.Timestamptz(6)
+  deliveredAt        DateTime? @map("delivered_at") @db.Timestamptz(6)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?   @map("cancellation_reason")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   items               OrderItem[]
   statusHistory       OrderStatusHistory[]
@@ -1070,6 +1076,9 @@ model Order {
   commission          Commission?
   loyaltyTransactions LoyaltyTransaction[]
   surveyResponses     SurveyResponse[]
+  sharedTableOrder    SharedTableOrder?
+  tableSessionId      String?              @map("table_session_id") @db.Uuid
+  tableSession        SharedTableOrder?    @relation("TableSessionOrders", fields: [tableSessionId], references: [id], onDelete: SetNull)
 
   @@index([billId], map: "orders_bill_idx", where: raw("(bill_id IS NOT NULL)"))
   @@index([courierId, createdAt(sort: Desc)], map: "orders_courier_idx", where: raw("(courier_id IS NOT NULL)"))
@@ -1077,30 +1086,89 @@ model Order {
   @@index([locationId, status, createdAt(sort: Desc)], map: "orders_location_status_idx")
   @@index([restaurantId, placedAt(sort: Desc)], map: "orders_restaurant_placed_idx", where: raw("(placed_at IS NOT NULL)"))
   @@index([tableId], map: "orders_table_open_idx", where: raw("((table_id IS NOT NULL) AND (status <> 'cancelado'::order_status))"))
+  @@index([tableSessionId], map: "orders_table_session_idx", where: raw("(table_session_id IS NOT NULL)"))
   @@map("orders")
 }
 
 /// Linea del pedido. Guarda copia del nombre y precio del plato: editar la
 /// carta no debe alterar pedidos ya realizados (PARCHE-156).
 model OrderItem {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId     String   @map("order_id") @db.Uuid
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String?  @map("product_id") @db.Uuid
-  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?  @map("product_id") @db.Uuid
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  productName String   @map("product_name")
-  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
-  quantity    Int      @db.SmallInt
+  productName     String   @map("product_name")
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  quantity        Int      @db.SmallInt
   /// unitPrice * quantity, calculado por trigger.
-  lineTotal   Decimal  @default(0) @map("line_total") @db.Decimal(12, 2)
-  notes       String?
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  lineTotal       Decimal  @default(0) @map("line_total") @db.Decimal(12, 2)
+  notes           String?
+  contributorId   String?  @map("contributor_id") @db.Uuid
+  contributor     User?    @relation("OrderItemContributor", fields: [contributorId], references: [id], onDelete: SetNull)
+  contributorName String?  @map("contributor_name")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@index([orderId], map: "order_items_order_idx")
   @@index([productId], map: "order_items_product_idx", where: raw("(product_id IS NOT NULL)"))
   @@map("order_items")
+}
+
+/// Pedido compartido en preparación por los participantes vinculados a una mesa.
+model SharedTableOrder {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tableId         String      @map("table_id") @db.Uuid
+  table           DiningTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  payerId         String?     @map("payer_id") @db.Uuid
+  payer           User?       @relation("SharedTableOrderPayer", fields: [payerId], references: [id], onDelete: SetNull)
+  orderId         String?     @unique @map("order_id") @db.Uuid
+  order           Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  ordersInSession Order[]     @relation("TableSessionOrders")
+  status          String      @default("abierto")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  submittedAt     DateTime?   @map("submitted_at") @db.Timestamptz(6)
+
+  participants SharedTableParticipant[]
+  items        SharedTableOrderItem[]
+
+  @@index([tableId, status], map: "shared_table_orders_table_status_idx")
+  @@map("shared_table_orders")
+}
+
+/// Participante con cuenta que se vinculó al pedido compartido de una mesa.
+model SharedTableParticipant {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId     String           @map("session_id") @db.Uuid
+  session       SharedTableOrder @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId        String           @map("user_id") @db.Uuid
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime         @default(now()) @map("joined_at") @db.Timestamptz(6)
+  contributedAt DateTime?        @map("contributed_at") @db.Timestamptz(6)
+
+  @@unique([sessionId, userId], map: "shared_table_participants_session_user_key")
+  @@index([userId, joinedAt(sort: Desc)], map: "shared_table_participants_user_idx")
+  @@map("shared_table_participants")
+}
+
+/// Renglón del carrito compartido con identificación de quien lo agregó.
+model SharedTableOrderItem {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId     String           @map("session_id") @db.Uuid
+  session       SharedTableOrder @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  contributorId String           @map("contributor_id") @db.Uuid
+  contributor   User             @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  productId     String           @map("product_id") @db.Uuid
+  product       Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName   String           @map("product_name")
+  unitPrice     Decimal          @map("unit_price") @db.Decimal(12, 2)
+  quantity      Int              @db.SmallInt
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([sessionId, contributorId, productId], map: "shared_table_order_items_contributor_product_key")
+  @@index([sessionId], map: "shared_table_order_items_session_idx")
+  @@map("shared_table_order_items")
 }
 
 /// Trazabilidad del pedido (GP-08, PARCHE-439). La alimenta un trigger.
@@ -1122,13 +1190,13 @@ model OrderStatusHistory {
 /// Transacciones de pago sobre un pedido o sobre una cuenta de mesa
 /// (GP-06, GP-07). idempotencyKey impide registrar dos veces el mismo pago.
 model Payment {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  billId            String?       @map("bill_id") @db.Uuid
-  bill              Bill?         @relation(fields: [billId], references: [id], onDelete: SetNull)
-  orderId           String?       @map("order_id") @db.Uuid
-  order             Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  payerId           String?       @map("payer_id") @db.Uuid
-  payer             User?         @relation(fields: [payerId], references: [id], onDelete: SetNull)
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billId  String? @map("bill_id") @db.Uuid
+  bill    Bill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
+  orderId String? @map("order_id") @db.Uuid
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payerId String? @map("payer_id") @db.Uuid
+  payer   User?   @relation(fields: [payerId], references: [id], onDelete: SetNull)
 
   method            PaymentMethod
   status            PaymentStatus @default(pendiente)
@@ -1175,23 +1243,23 @@ model DeliveryAssignment {
 /// Liquidacion por pedido: ingreso bruto, comision de la plataforma y neto del
 /// afiliado (AE-01, AE-02).
 model Commission {
-  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId          String     @unique @map("order_id") @db.Uuid
-  order            Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  restaurantId     String     @map("restaurant_id") @db.Uuid
-  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  locationId       String     @map("location_id") @db.Uuid
-  location         Location   @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  courierId        String?    @map("courier_id") @db.Uuid
-  courier          User?      @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId      String     @unique @map("order_id") @db.Uuid
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  locationId   String     @map("location_id") @db.Uuid
+  location     Location   @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  courierId    String?    @map("courier_id") @db.Uuid
+  courier      User?      @relation(fields: [courierId], references: [id], onDelete: SetNull)
 
-  grossAmount      Decimal    @map("gross_amount") @db.Decimal(12, 2)
-  commissionRate   Decimal    @map("commission_rate") @db.Decimal(6, 4)
-  commissionAmount Decimal    @map("commission_amount") @db.Decimal(12, 2)
-  courierPayout    Decimal    @default(0) @map("courier_payout") @db.Decimal(12, 2)
-  netAmount        Decimal    @map("net_amount") @db.Decimal(12, 2)
-  settledAt        DateTime?  @map("settled_at") @db.Timestamptz(6)
-  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  grossAmount      Decimal   @map("gross_amount") @db.Decimal(12, 2)
+  commissionRate   Decimal   @map("commission_rate") @db.Decimal(6, 4)
+  commissionAmount Decimal   @map("commission_amount") @db.Decimal(12, 2)
+  courierPayout    Decimal   @default(0) @map("courier_payout") @db.Decimal(12, 2)
+  netAmount        Decimal   @map("net_amount") @db.Decimal(12, 2)
+  settledAt        DateTime? @map("settled_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([courierId, createdAt(sort: Desc)], map: "commissions_courier_idx", where: raw("(courier_id IS NOT NULL)"))
   @@index([locationId, createdAt(sort: Desc)], map: "commissions_location_idx")
@@ -1230,42 +1298,42 @@ model LoyaltyAccount {
 
 /// Beneficios redimibles con puntos. locationId nulo = beneficio de plataforma.
 model LoyaltyReward {
-  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId   String?              @map("location_id") @db.Uuid
-  location     Location?            @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?
-  pointsCost   Int                  @map("points_cost")
-  isActive     Boolean              @default(true) @map("is_active")
-  validFrom    DateTime?            @map("valid_from") @db.Timestamptz(6)
-  validTo      DateTime?            @map("valid_to") @db.Timestamptz(6)
-  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId  String?   @map("location_id") @db.Uuid
+  location    Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  pointsCost  Int       @map("points_cost")
+  isActive    Boolean   @default(true) @map("is_active")
+  validFrom   DateTime? @map("valid_from") @db.Timestamptz(6)
+  validTo     DateTime? @map("valid_to") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  redemptions  LoyaltyTransaction[]
+  redemptions LoyaltyTransaction[]
 
   @@map("loyalty_rewards")
 }
 
 /// Libro mayor de puntos: positivo acumula, negativo redime (PU-05).
 model LoyaltyTransaction {
-  id            BigInt                 @id @default(autoincrement())
-  userId        String                 @map("user_id") @db.Uuid
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          LoyaltyTransactionType
-  points        Int
+  id           BigInt                 @id @default(autoincrement())
+  userId       String                 @map("user_id") @db.Uuid
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         LoyaltyTransactionType
+  points       Int
   /// Saldo resultante, escrito por el trigger que aplica el asiento.
-  balanceAfter  Int                    @map("balance_after")
+  balanceAfter Int                    @map("balance_after")
 
-  orderId       String?                @map("order_id") @db.Uuid
-  order         Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  reservationId String?                @map("reservation_id") @db.Uuid
-  reservation   Reservation?           @relation(fields: [reservationId], references: [id], onDelete: SetNull)
-  rewardId      String?                @map("reward_id") @db.Uuid
-  reward        LoyaltyReward?         @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+  orderId       String?        @map("order_id") @db.Uuid
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reservationId String?        @map("reservation_id") @db.Uuid
+  reservation   Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  rewardId      String?        @map("reward_id") @db.Uuid
+  reward        LoyaltyReward? @relation(fields: [rewardId], references: [id], onDelete: SetNull)
 
-  description   String?
-  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, createdAt(sort: Desc)], map: "loyalty_transactions_user_idx")
   @@map("loyalty_transactions")
@@ -1278,19 +1346,19 @@ model LoyaltyTransaction {
 /// Calificacion de la sede. Una por comensal: el POST hace upsert
 /// (PARCHE-103/107). El promedio de la sede lo recalcula un trigger.
 model LocationReview {
-  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  locationId String          @map("location_id") @db.Uuid
-  location   Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  userId     String          @map("user_id") @db.Uuid
-  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating     Int             @db.SmallInt
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String       @map("location_id") @db.Uuid
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  userId     String       @map("user_id") @db.Uuid
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int          @db.SmallInt
   comment    String?
-  status     ReviewStatus    @default(publicada)
-  editedAt   DateTime?       @map("edited_at") @db.Timestamptz(6)
-  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  status     ReviewStatus @default(publicada)
+  editedAt   DateTime?    @map("edited_at") @db.Timestamptz(6)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  reports    ContentReport[]
+  reports ContentReport[]
 
   @@unique([locationId, userId], map: "location_reviews_user_key")
   @@index([locationId, createdAt(sort: Desc)], map: "location_reviews_location_idx", where: raw("(status = 'publicada'::review_status)"))
@@ -1300,19 +1368,19 @@ model LocationReview {
 
 /// Calificacion del producto. Una por comensal (PARCHE-113/117).
 model ProductReview {
-  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId String          @map("product_id") @db.Uuid
-  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    String          @map("user_id") @db.Uuid
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating    Int             @db.SmallInt
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String       @map("product_id") @db.Uuid
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String       @map("user_id") @db.Uuid
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int          @db.SmallInt
   comment   String?
-  status    ReviewStatus    @default(publicada)
-  editedAt  DateTime?       @map("edited_at") @db.Timestamptz(6)
-  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  status    ReviewStatus @default(publicada)
+  editedAt  DateTime?    @map("edited_at") @db.Timestamptz(6)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  reports   ContentReport[]
+  reports ContentReport[]
 
   @@unique([productId, userId], map: "product_reviews_user_key")
   @@index([productId, createdAt(sort: Desc)], map: "product_reviews_product_idx", where: raw("(status = 'publicada'::review_status)"))
@@ -1327,31 +1395,31 @@ model ProductReview {
 /// Publicacion del feed. El indice (createdAt, id) sostiene la paginacion por
 /// cursor, sin OFFSET (PARCHE-77).
 model Post {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  authorId      String          @map("author_id") @db.Uuid
-  author        User            @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId   String    @map("author_id") @db.Uuid
+  author     User      @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   /// DO-04: se puede publicar sin asociar restaurante.
-  locationId    String?         @map("location_id") @db.Uuid
-  location      Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId String?   @map("location_id") @db.Uuid
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
-  caption       String?
-  status        PostStatus      @default(publicada)
+  caption   String?
+  status    PostStatus @default(publicada)
   /// Lo mantiene un trigger sobre [PostLike].
-  likeCount     Int             @default(0) @map("like_count")
+  likeCount Int        @default(0) @map("like_count")
 
   /// GU-08: eliminar contenido exige motivo y queda auditado.
-  removedById   String?         @map("removed_by") @db.Uuid
-  removedBy     User?           @relation("PostModerator", fields: [removedById], references: [id], onDelete: SetNull)
-  removalReason String?         @map("removal_reason")
-  removedAt     DateTime?       @map("removed_at") @db.Timestamptz(6)
+  removedById   String?   @map("removed_by") @db.Uuid
+  removedBy     User?     @relation("PostModerator", fields: [removedById], references: [id], onDelete: SetNull)
+  removalReason String?   @map("removal_reason")
+  removedAt     DateTime? @map("removed_at") @db.Timestamptz(6)
 
-  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  media         PostMedia[]
-  likes         PostLike[]
-  views         PostView[]
-  reports       ContentReport[]
+  media   PostMedia[]
+  likes   PostLike[]
+  views   PostView[]
+  reports ContentReport[]
 
   @@index([authorId, createdAt(sort: Desc)], map: "posts_author_idx")
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "posts_feed_idx", where: raw("(status = 'publicada'::post_status)"))
@@ -1394,13 +1462,13 @@ model PostLike {
 
 /// Una visualizacion autentificada por usuario, publicacion y dia (AE-03).
 model PostView {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId    String   @map("post_id") @db.Uuid
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
-  viewDate  DateTime @default(dbgenerated("(timezone('America/Bogota'::text, now()))::date")) @map("view_date") @db.Date
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId   String   @map("post_id") @db.Uuid
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId   String   @map("user_id") @db.Uuid
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+  viewDate DateTime @default(dbgenerated("(timezone('America/Bogota'::text, now()))::date")) @map("view_date") @db.Date
 
   @@unique([postId, userId, viewDate], map: "post_views_post_user_day_key")
   @@index([postId, viewedAt(sort: Desc)], map: "post_views_post_date_idx")
@@ -1424,9 +1492,9 @@ model Favorite {
 /// polimorfico para no perder integridad referencial; un CHECK exige que
 /// exactamente una este presente.
 model ContentReport {
-  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reporterId       String          @map("reporter_id") @db.Uuid
-  reporter         User            @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId String @map("reporter_id") @db.Uuid
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
   postId           String?         @map("post_id") @db.Uuid
   post             Post?           @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -1435,15 +1503,15 @@ model ContentReport {
   productReviewId  String?         @map("product_review_id") @db.Uuid
   productReview    ProductReview?  @relation(fields: [productReviewId], references: [id], onDelete: Cascade)
 
-  reason           ReportReason
-  details          String?
-  status           ReportStatus    @default(pendiente)
-  resolvedById     String?         @map("resolved_by") @db.Uuid
-  resolvedBy       User?           @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
-  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(6)
-  resolutionNote   String?         @map("resolution_note")
-  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  reason         ReportReason
+  details        String?
+  status         ReportStatus @default(pendiente)
+  resolvedById   String?      @map("resolved_by") @db.Uuid
+  resolvedBy     User?        @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt     DateTime?    @map("resolved_at") @db.Timestamptz(6)
+  resolutionNote String?      @map("resolution_note")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@unique([reporterId, locationReviewId], map: "content_reports_lreview_key", where: raw("(location_review_id IS NOT NULL)"))
   @@unique([reporterId, postId], map: "content_reports_post_key", where: raw("(post_id IS NOT NULL)"))
