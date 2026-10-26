@@ -55,6 +55,8 @@ export interface LocationSearchResult {
   id: string;
   name: string;
   address: string;
+  /** Marca (restaurante) a la que pertenece la sede. */
+  brandName: string;
 }
 
 export interface LocationRepository {

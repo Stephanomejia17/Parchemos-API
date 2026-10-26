@@ -8,6 +8,8 @@ export function presentPost(post: PostView, storage: PostMediaStorage) {
     caption: post.caption,
     createdAt: post.createdAt.toISOString(),
     likeCount: post.likeCount,
+    commentCount: post.commentCount,
+    likedByMe: post.likedByMe,
     author: post.author,
     location: post.location,
     media: post.media.map((media) => ({

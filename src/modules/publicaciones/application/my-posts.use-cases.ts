@@ -8,7 +8,11 @@ import type { PostRepository } from '../domain/post.repository';
 import { DEFAULT_FEED_LIMIT, MAX_FEED_LIMIT } from './list-feed.use-case';
 import { presentPost } from './post.presenter';
 
-/** Perfil: las publicaciones del propio usuario, con el total para el contador. */
+/**
+ * Perfil: las publicaciones del propio usuario, con el total para el contador.
+ * Con `locationId` solo las de esa sede: el dueño de varias sedes ve el
+ * contenido de cada una por separado.
+ */
 @Injectable()
 export class ListMyPostsUseCase {
   constructor(
@@ -16,15 +20,24 @@ export class ListMyPostsUseCase {
     @Inject(POST_MEDIA_STORAGE) private readonly storage: PostMediaStorage,
   ) {}
 
-  async execute(userId: string, params: { cursor?: string; limit?: number }) {
+  async execute(
+    userId: string,
+    params: { cursor?: string; limit?: number; locationId?: string },
+  ) {
     const limit = Math.min(
       Math.max(params.limit ?? DEFAULT_FEED_LIMIT, 1),
       MAX_FEED_LIMIT,
     );
     const after = params.cursor ? decodeCursor(params.cursor) : null;
     const [slice, total] = await Promise.all([
-      this.posts.findFeed(limit, after, userId),
-      // El total solo se pide en la primera pagina: no cambia al hacer scroll.
+      this.posts.findFeed({
+        limit,
+        after,
+        authorId: userId,
+        locationId: params.locationId,
+        viewerId: userId,
+      }),
+      // El total (de todas sus publicaciones) solo se pide en la primera pagina.
       after ? Promise.resolve(null) : this.posts.countByAuthor(userId),
     ]);
     return {

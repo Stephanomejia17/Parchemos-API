@@ -13,8 +13,8 @@ export class GetPostUseCase {
     @Inject(POST_MEDIA_STORAGE) private readonly storage: PostMediaStorage,
   ) {}
 
-  async execute(id: string) {
-    const post = await this.posts.findPublishedById(id);
+  async execute(id: string, viewerId?: string) {
+    const post = await this.posts.findPublishedById(id, viewerId);
     // Oculta o eliminada se trata igual que inexistente (CA9).
     if (!post) throw new NotFoundError('La publicación no existe.');
     return presentPost(post, this.storage);

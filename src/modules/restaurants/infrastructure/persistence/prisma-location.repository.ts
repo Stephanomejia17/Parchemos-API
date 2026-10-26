@@ -140,18 +140,15 @@ export class PrismaLocationRepository implements LocationRepository {
       .filter(Boolean);
 
     const precios = precio
-    ?.split(',')
-    .map((value) => Number(value.trim()))
-    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 4);
+      ?.split(',')
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= 4);
 
     const nombreNormalizado = nombre?.trim();
 
     const orderBy =
       ordenarPor === 'calificacion'
-        ? [
-            { avgRating: 'desc' as const },
-            { ratingCount: 'desc' as const },
-          ]
+        ? [{ avgRating: 'desc' as const }, { ratingCount: 'desc' as const }]
         : ordenarPor === 'precio'
           ? [{ priceRange: 'asc' as const }]
           : [{ updatedAt: 'desc' as const }];
@@ -208,25 +205,51 @@ export class PrismaLocationRepository implements LocationRepository {
     const escaped = query.replace(/[\\%_]/g, (char) => `\\${char}`);
     try {
       return await this.prisma.$queryRaw<LocationSearchResult[]>(Prisma.sql`
-        SELECT id, name, address
-        FROM public.locations
-        WHERE status = 'activa'
-          AND unaccent(name) ILIKE unaccent(${`%${escaped}%`})
-        ORDER BY (unaccent(name) ILIKE unaccent(${`${escaped}%`})) DESC, name ASC
+        SELECT l.id, l.name, l.address, r.business_name AS "brandName"
+        FROM public.locations l
+        JOIN public.restaurants r ON r.id = l.restaurant_id
+        WHERE l.status = 'activa'
+          AND (
+            unaccent(l.name) ILIKE unaccent(${`%${escaped}%`})
+            OR unaccent(r.business_name) ILIKE unaccent(${`%${escaped}%`})
+          )
+        ORDER BY
+          (unaccent(l.name) ILIKE unaccent(${`${escaped}%`})
+            OR unaccent(r.business_name) ILIKE unaccent(${`${escaped}%`})) DESC,
+          r.business_name ASC,
+          l.name ASC
         LIMIT ${limit}
       `);
     } catch {
       // Si la extension unaccent no esta disponible se busca solo sin
       // distinguir mayusculas, en vez de dejar el selector inservible.
-      return this.prisma.location.findMany({
+      const rows = await this.prisma.location.findMany({
         where: {
           status: PrismaLocationStatus.activa,
-          name: { contains: query, mode: 'insensitive' },
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            {
+              restaurant: {
+                businessName: { contains: query, mode: 'insensitive' },
+              },
+            },
+          ],
         },
-        select: { id: true, name: true, address: true },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          restaurant: { select: { businessName: true } },
+        },
         orderBy: { name: 'asc' },
         take: limit,
       });
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        brandName: row.restaurant.businessName,
+      }));
     }
   }
 

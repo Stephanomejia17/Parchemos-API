@@ -5,9 +5,10 @@ import {
   PostStatus,
 } from '../../../../../generated/prisma/client';
 import { PrismaService } from '../../../../infrastructure/prisma/prisma.service';
-import type { PostCursor } from '../../domain/post-cursor';
 import type {
+  FeedQuery,
   FeedSlice,
+  LocationUse,
   NewPost,
   PostRepository,
   PostView,
@@ -21,18 +22,32 @@ const postInclude = {
       profile: { select: { fullName: true, photoUrl: true } },
     },
   },
-  location: { select: { id: true, name: true } },
+  // La sede viaja siempre con su marca: el contenido queda ligado a las dos.
+  location: {
+    select: {
+      id: true,
+      name: true,
+      restaurant: { select: { id: true, businessName: true } },
+    },
+  },
   media: { orderBy: { position: 'asc' as const } },
 } satisfies Prisma.PostInclude;
 
 type PostRow = Prisma.PostGetPayload<{ include: typeof postInclude }>;
 
-function toView(row: PostRow): PostView {
+interface Extras {
+  commentCount: number;
+  likedByMe: boolean;
+}
+
+function toView(row: PostRow, extras: Extras): PostView {
   return {
     id: row.id,
     caption: row.caption,
     createdAt: row.createdAt,
     likeCount: row.likeCount,
+    commentCount: extras.commentCount,
+    likedByMe: extras.likedByMe,
     author: {
       id: row.author.id,
       fullName: row.author.profile?.fullName ?? 'Usuario Parchemos',
@@ -80,7 +95,7 @@ export class PrismaPostRepository implements PostRepository {
       },
       include: postInclude,
     });
-    return toView(row);
+    return toView(row, { commentCount: 0, likedByMe: false });
   }
 
   async countByAuthor(authorId: string): Promise<number> {
@@ -103,11 +118,8 @@ export class PrismaPostRepository implements PostRepository {
     return count > 0;
   }
 
-  async findFeed(
-    limit: number,
-    after: PostCursor | null,
-    authorId?: string,
-  ): Promise<FeedSlice> {
+  async findFeed(query: FeedQuery): Promise<FeedSlice> {
+    const { limit, after, authorId, locationId, viewerId } = query;
     // Keyset sobre (created_at, id): usa posts_feed_idx sin OFFSET (PARCHE-76/77).
     // `created_at::text` conserva los microsegundos que `Date` perderia.
     const page = await this.prisma.$queryRaw<
@@ -117,6 +129,7 @@ export class PrismaPostRepository implements PostRepository {
       FROM public.posts
       WHERE status = 'publicada'
       ${authorId ? Prisma.sql`AND author_id = ${authorId}::uuid` : Prisma.empty}
+      ${locationId ? Prisma.sql`AND location_id = ${locationId}::uuid` : Prisma.empty}
       ${
         after
           ? Prisma.sql`AND (created_at, id) < (${after.createdAt}::timestamptz, ${after.id}::uuid)`
@@ -130,15 +143,24 @@ export class PrismaPostRepository implements PostRepository {
     const slice = hasMore ? page.slice(0, limit) : page;
     if (!slice.length) return { items: [], next: null };
 
-    const rows = await this.prisma.post.findMany({
-      where: { id: { in: slice.map((entry) => entry.id) } },
-      include: postInclude,
-    });
+    const ids = slice.map((entry) => entry.id);
+    const [rows, extras] = await Promise.all([
+      this.prisma.post.findMany({
+        where: { id: { in: ids } },
+        include: postInclude,
+      }),
+      this.loadExtras(ids, viewerId),
+    ]);
     const byId = new Map(rows.map((row) => [row.id, row]));
     const items = slice
       .map((entry) => byId.get(entry.id))
       .filter((row): row is PostRow => row !== undefined)
-      .map(toView);
+      .map((row) =>
+        toView(
+          row,
+          extras.get(row.id) ?? { commentCount: 0, likedByMe: false },
+        ),
+      );
 
     const last = slice[slice.length - 1];
     return {
@@ -147,18 +169,62 @@ export class PrismaPostRepository implements PostRepository {
     };
   }
 
-  async findPublishedById(id: string): Promise<PostView | null> {
+  async findPublishedById(
+    id: string,
+    viewerId?: string,
+  ): Promise<PostView | null> {
     const row = await this.prisma.post.findFirst({
       where: { id, status: PostStatus.publicada },
       include: postInclude,
     });
-    return row ? toView(row) : null;
+    if (!row) return null;
+    const extras = await this.loadExtras([row.id], viewerId);
+    return toView(
+      row,
+      extras.get(row.id) ?? { commentCount: 0, likedByMe: false },
+    );
   }
 
-  async isActiveLocation(locationId: string): Promise<boolean> {
-    const count = await this.prisma.location.count({
+  async checkLocation(
+    locationId: string,
+    ownerId?: string,
+  ): Promise<LocationUse> {
+    const location = await this.prisma.location.findFirst({
       where: { id: locationId, status: PrismaLocationStatus.activa },
+      select: { restaurant: { select: { ownerId: true } } },
     });
-    return count > 0;
+    if (!location) return 'not_found';
+    if (ownerId && location.restaurant.ownerId !== ownerId) return 'not_owned';
+    return 'ok';
+  }
+
+  /** Cantidad de comentarios y si `viewerId` dio like, para varias publicaciones a la vez. */
+  private async loadExtras(
+    postIds: string[],
+    viewerId?: string,
+  ): Promise<Map<string, Extras>> {
+    const [comments, likes] = await Promise.all([
+      this.prisma.postComment.groupBy({
+        by: ['postId'],
+        where: { postId: { in: postIds } },
+        _count: { _all: true },
+      }),
+      viewerId
+        ? this.prisma.postLike.findMany({
+            where: { userId: viewerId, postId: { in: postIds } },
+            select: { postId: true },
+          })
+        : Promise.resolve([] as { postId: string }[]),
+    ]);
+    const commentCounts = new Map(
+      comments.map((row) => [row.postId, row._count._all]),
+    );
+    const liked = new Set(likes.map((row) => row.postId));
+    return new Map(
+      postIds.map((id) => [
+        id,
+        { commentCount: commentCounts.get(id) ?? 0, likedByMe: liked.has(id) },
+      ]),
+    );
   }
 }

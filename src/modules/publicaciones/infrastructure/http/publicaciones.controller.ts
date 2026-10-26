@@ -27,7 +27,11 @@ import {
   ListMyPostsUseCase,
 } from '../../application/my-posts.use-cases';
 import { MAX_POST_MEDIA_FILES } from '../../domain/media-inspector';
-import { CreatePostDto, FeedQueryDto } from './publicaciones.dto';
+import {
+  CreatePostDto,
+  FeedQueryDto,
+  MyPostsQueryDto,
+} from './publicaciones.dto';
 import { postMediaUploadOptions } from './post-media-upload.options';
 
 /**
@@ -47,17 +51,25 @@ export class PublicacionesController {
   ) {}
 
   @Get('feed')
-  feed(@Query() query: FeedQueryDto) {
-    return this.listFeed.execute({ cursor: query.cursor, limit: query.limit });
+  feed(@CurrentUser() user: AuthenticatedUser, @Query() query: FeedQueryDto) {
+    return this.listFeed.execute({
+      cursor: query.cursor,
+      limit: query.limit,
+      viewerId: user.id,
+    });
   }
 
   /** Perfil: mis publicaciones. Va antes de `:id` para que "mias" no se lea como uuid. */
   @Get('publicaciones/mias')
   @Roles(Role.COMENSAL, Role.RESTAURANTE)
-  mine(@CurrentUser() user: AuthenticatedUser, @Query() query: FeedQueryDto) {
+  mine(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: MyPostsQueryDto,
+  ) {
     return this.listMyPosts.execute(user.id, {
       cursor: query.cursor,
       limit: query.limit,
+      locationId: query.locationId,
     });
   }
 
@@ -72,8 +84,11 @@ export class PublicacionesController {
   }
 
   @Get('publicaciones/:id')
-  detail(@Param('id', ParseUUIDPipe) id: string) {
-    return this.getPost.execute(id);
+  detail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.getPost.execute(id, user.id);
   }
 
   @Post('publicaciones/:id/vista')
@@ -102,6 +117,7 @@ export class PublicacionesController {
     // El autor sale siempre del token, nunca del cuerpo.
     return this.createPost.execute({
       authorId: user.id,
+      authorRole: user.role,
       files,
       caption: body.caption,
       locationId: body.locationId,

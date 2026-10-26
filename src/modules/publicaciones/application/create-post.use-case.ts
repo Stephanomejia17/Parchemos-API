@@ -6,7 +6,10 @@ import {
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { Role } from '../../../common/enums/role.enum';
+import { ForbiddenError } from '../../../common/errors/forbidden-error';
 import { NotFoundError } from '../../../common/errors/not-found-error';
+import { ValidationError } from '../../../common/errors/validation-error';
 import {
   ALLOWED_FORMATS_LABEL,
   MAX_POST_MEDIA_BYTES,
@@ -28,6 +31,8 @@ export interface UploadedFile {
 
 export interface CreatePostCommand {
   authorId: string;
+  /** Rol de quien publica: define si la sede es obligatoria. */
+  authorRole: Role;
   files: UploadedFile[];
   caption?: string;
   locationId?: string | null;
@@ -63,12 +68,7 @@ export class CreatePostUseCase {
 
     const inspected = command.files.map((file) => this.inspect(file));
 
-    const locationId = command.locationId ?? null;
-    if (locationId && !(await this.posts.isActiveLocation(locationId))) {
-      throw new NotFoundError(
-        'El restaurante seleccionado no existe o no está disponible.',
-      );
-    }
+    const locationId = await this.resolveLocation(command);
 
     const uploadedKeys: string[] = [];
     try {
@@ -106,6 +106,47 @@ export class CreatePostUseCase {
       await this.storage.removeMany(uploadedKeys);
       throw error;
     }
+  }
+
+  /**
+   * Sede (y por ende marca) a la que queda ligada la publicacion.
+   * - Restaurante: la sede es obligatoria y debe ser de uno de sus restaurantes;
+   *   un dueño con varias sedes elige a cual pertenece el contenido.
+   * - Comensal: es opcional (DO-04 CA3), pero si la elige se asocia igual a su
+   *   sede y a la marca de esa sede.
+   */
+  private async resolveLocation(
+    command: CreatePostCommand,
+  ): Promise<string | null> {
+    const locationId = command.locationId ?? null;
+    const isOwner = command.authorRole === Role.RESTAURANTE;
+
+    if (!locationId) {
+      if (isOwner) {
+        throw new ValidationError(
+          'Elige la sede a la que pertenece esta publicación.',
+          'LOCATION_REQUIRED',
+        );
+      }
+      return null;
+    }
+
+    const use = await this.posts.checkLocation(
+      locationId,
+      isOwner ? command.authorId : undefined,
+    );
+    if (use === 'not_found') {
+      throw new NotFoundError(
+        'El restaurante seleccionado no existe o no está disponible.',
+      );
+    }
+    if (use === 'not_owned') {
+      throw new ForbiddenError(
+        'Solo puedes publicar en las sedes de tus restaurantes.',
+        'LOCATION_NOT_OWNED',
+      );
+    }
+    return locationId;
   }
 
   private inspect(file: UploadedFile): {

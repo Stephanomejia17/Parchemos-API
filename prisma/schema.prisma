@@ -345,6 +345,7 @@ model User {
   moderatedPosts  Post[]           @relation("PostModerator")
   postLikes       PostLike[]
   postViews       PostView[]
+  postComments    PostComment[]    @relation("PostCommentAuthor")
   locationReviews LocationReview[]
   productReviews  ProductReview[]
   reportsFiled    ContentReport[]  @relation("ReportReporter")
@@ -1419,6 +1420,7 @@ model Post {
   media   PostMedia[]
   likes   PostLike[]
   views   PostView[]
+  comments PostComment[]
   reports ContentReport[]
 
   @@index([authorId, createdAt(sort: Desc)], map: "posts_author_idx")
@@ -1458,6 +1460,21 @@ model PostLike {
   @@id([postId, userId])
   @@index([userId, createdAt(sort: Desc)], map: "post_likes_user_idx")
   @@map("post_likes")
+}
+
+/// Comentario de una publicacion. Paginado por (created_at, id), de nuevo a antiguo.
+model PostComment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String   @map("author_id") @db.Uuid
+  author    User     @relation("PostCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([postId, createdAt(sort: Desc), id(sort: Desc)], map: "post_comments_post_idx")
+  @@index([authorId], map: "post_comments_author_idx")
+  @@map("post_comments")
 }
 
 /// Una visualizacion autentificada por usuario, publicacion y dia (AE-03).

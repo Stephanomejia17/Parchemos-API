@@ -3,7 +3,15 @@ import {
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
-import type { PostRepository, PostView } from '../domain/post.repository';
+import { Role } from '../../../common/enums/role.enum';
+import { ForbiddenError } from '../../../common/errors/forbidden-error';
+import { NotFoundError } from '../../../common/errors/not-found-error';
+import { ValidationError } from '../../../common/errors/validation-error';
+import type {
+  LocationUse,
+  PostRepository,
+  PostView,
+} from '../domain/post.repository';
 import { CreatePostUseCase } from './create-post.use-case';
 
 const PNG = (() => {
@@ -29,8 +37,16 @@ function viewOf(locationId: string | null): PostView {
     caption: null,
     createdAt: new Date('2026-10-17T10:00:00Z'),
     likeCount: 0,
+    commentCount: 0,
+    likedByMe: false,
     author: { id: 'user-1', fullName: 'Ana', photoUrl: null, role: 'comensal' },
-    location: locationId ? { id: locationId, name: 'Sede' } : null,
+    location: locationId
+      ? {
+          id: locationId,
+          name: 'Sede Laureles',
+          restaurant: { id: 'rest-1', businessName: 'NATS' },
+        }
+      : null,
     media: [
       {
         id: 'm1',
@@ -46,12 +62,10 @@ function viewOf(locationId: string | null): PostView {
 }
 
 function setup(
-  overrides: { activeLocation?: boolean; createFails?: boolean } = {},
+  overrides: { location?: LocationUse; createFails?: boolean } = {},
 ) {
   const posts = {
-    isActiveLocation: jest
-      .fn()
-      .mockResolvedValue(overrides.activeLocation ?? true),
+    checkLocation: jest.fn().mockResolvedValue(overrides.location ?? 'ok'),
     create: overrides.createFails
       ? jest.fn().mockRejectedValue(new Error('db caida'))
       : jest
@@ -77,12 +91,15 @@ function setup(
   return { useCase, posts, storage };
 }
 
+const diner = { authorId: 'user-1', authorRole: Role.COMENSAL };
+const owner = { authorId: 'owner-1', authorRole: Role.RESTAURANTE };
+
 describe('CreatePostUseCase', () => {
   it('CA1: guarda la publicacion con sus archivos y metadatos', async () => {
     const { useCase, posts, storage } = setup();
 
     const result = await useCase.execute({
-      authorId: 'user-1',
+      ...diner,
       files: [file('a.png', PNG)],
       caption: '  Qué rico  ',
       locationId: 'loc-1',
@@ -109,22 +126,110 @@ describe('CreatePostUseCase', () => {
     expect(result.media[0].url).toBe('https://cdn.test/posts/user-1/a.png');
   });
 
-  it('CA3: permite publicar sin restaurante (location_id nulo)', async () => {
+  it('la respuesta liga la publicacion a la sede y a su marca', async () => {
+    const { useCase } = setup();
+
+    const result = await useCase.execute({
+      ...diner,
+      files: [file('a.png', PNG)],
+      locationId: 'loc-1',
+    });
+
+    expect(result.location).toEqual({
+      id: 'loc-1',
+      name: 'Sede Laureles',
+      restaurant: { id: 'rest-1', businessName: 'NATS' },
+    });
+    expect(result).toMatchObject({
+      likeCount: 0,
+      commentCount: 0,
+      likedByMe: false,
+    });
+  });
+
+  it('CA3: un comensal puede publicar sin restaurante (location_id nulo)', async () => {
     const { useCase, posts } = setup();
 
-    await useCase.execute({ authorId: 'user-1', files: [file('a.png', PNG)] });
+    await useCase.execute({ ...diner, files: [file('a.png', PNG)] });
 
-    expect(posts.isActiveLocation).not.toHaveBeenCalled();
+    expect(posts.checkLocation).not.toHaveBeenCalled();
     expect(posts.create).toHaveBeenCalledWith(
       expect.objectContaining({ locationId: null }),
     );
+  });
+
+  describe('restaurante (dueño con una o varias sedes)', () => {
+    it('debe elegir la sede: sin sede responde 400 y no sube nada', async () => {
+      const { useCase, storage, posts } = setup();
+
+      const attempt = useCase.execute({
+        ...owner,
+        files: [file('a.png', PNG)],
+      });
+
+      await expect(attempt).rejects.toThrow(ValidationError);
+      await expect(attempt).rejects.toThrow('Elige la sede');
+      expect(storage.upload).not.toHaveBeenCalled();
+      expect(posts.create).not.toHaveBeenCalled();
+    });
+
+    it('solo puede publicar en sedes de sus propios restaurantes (403)', async () => {
+      const { useCase, storage } = setup({ location: 'not_owned' });
+
+      await expect(
+        useCase.execute({
+          ...owner,
+          files: [file('a.png', PNG)],
+          locationId: 'sede-de-otra-marca',
+        }),
+      ).rejects.toThrow(ForbiddenError);
+      expect(storage.upload).not.toHaveBeenCalled();
+    });
+
+    it('verifica la propiedad con su propio id; el comensal no la exige', async () => {
+      const { useCase, posts } = setup();
+
+      await useCase.execute({
+        ...owner,
+        files: [file('a.png', PNG)],
+        locationId: 'mi-sede',
+      });
+      await useCase.execute({
+        ...diner,
+        files: [file('a.png', PNG)],
+        locationId: 'cualquiera',
+      });
+
+      expect(posts.checkLocation).toHaveBeenNthCalledWith(
+        1,
+        'mi-sede',
+        'owner-1',
+      );
+      expect(posts.checkLocation).toHaveBeenNthCalledWith(
+        2,
+        'cualquiera',
+        undefined,
+      );
+    });
+
+    it('una sede inexistente o inactiva responde 404', async () => {
+      const { useCase } = setup({ location: 'not_found' });
+
+      await expect(
+        useCase.execute({
+          ...owner,
+          files: [file('a.png', PNG)],
+          locationId: 'x',
+        }),
+      ).rejects.toThrow(NotFoundError);
+    });
   });
 
   it('conserva el orden de seleccion en position', async () => {
     const { useCase, posts } = setup();
 
     await useCase.execute({
-      authorId: 'user-1',
+      ...diner,
       files: [file('a.png', PNG), file('b.png', PNG)],
     });
 
@@ -137,9 +242,9 @@ describe('CreatePostUseCase', () => {
   it('RN2: sin archivos responde 400 y no sube nada', async () => {
     const { useCase, storage } = setup();
 
-    await expect(
-      useCase.execute({ authorId: 'user-1', files: [] }),
-    ).rejects.toThrow(BadRequestException);
+    await expect(useCase.execute({ ...diner, files: [] })).rejects.toThrow(
+      BadRequestException,
+    );
     expect(storage.upload).not.toHaveBeenCalled();
   });
 
@@ -147,7 +252,7 @@ describe('CreatePostUseCase', () => {
     const { useCase, storage } = setup();
 
     const attempt = useCase.execute({
-      authorId: 'user-1',
+      ...diner,
       files: [file('foto.png', Buffer.from('%PDF-1.7 contenido'))],
     });
 
@@ -160,7 +265,7 @@ describe('CreatePostUseCase', () => {
     const { useCase, storage } = setup();
 
     const attempt = useCase.execute({
-      authorId: 'user-1',
+      ...diner,
       files: [file('grande.png', PNG, 50 * 1024 * 1024 + 1)],
     });
 
@@ -168,12 +273,12 @@ describe('CreatePostUseCase', () => {
     expect(storage.upload).not.toHaveBeenCalled();
   });
 
-  it('rechaza una sede inexistente o no activa antes de subir', async () => {
-    const { useCase, storage } = setup({ activeLocation: false });
+  it('un comensal con una sede inexistente o inactiva recibe 404 sin subir nada', async () => {
+    const { useCase, storage } = setup({ location: 'not_found' });
 
     await expect(
       useCase.execute({
-        authorId: 'user-1',
+        ...diner,
         files: [file('a.png', PNG)],
         locationId: 'loc-x',
       }),
@@ -186,7 +291,7 @@ describe('CreatePostUseCase', () => {
 
     await expect(
       useCase.execute({
-        authorId: 'user-1',
+        ...diner,
         files: [file('a.png', PNG), file('b.png', PNG)],
       }),
     ).rejects.toThrow('db caida');
@@ -205,7 +310,7 @@ describe('CreatePostUseCase', () => {
 
     await expect(
       useCase.execute({
-        authorId: 'user-1',
+        ...diner,
         files: [file('a.png', PNG), file('b.png', PNG)],
       }),
     ).rejects.toThrow('storage caido');

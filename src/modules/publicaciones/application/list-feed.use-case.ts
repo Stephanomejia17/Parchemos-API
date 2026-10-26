@@ -16,13 +16,21 @@ export class ListFeedUseCase {
     @Inject(POST_MEDIA_STORAGE) private readonly storage: PostMediaStorage,
   ) {}
 
-  async execute(params: { cursor?: string; limit?: number }) {
+  async execute(params: {
+    cursor?: string;
+    limit?: number;
+    viewerId?: string;
+  }) {
     const limit = Math.min(
       Math.max(params.limit ?? DEFAULT_FEED_LIMIT, 1),
       MAX_FEED_LIMIT,
     );
     const after = params.cursor ? decodeCursor(params.cursor) : null;
-    const slice = await this.posts.findFeed(limit, after);
+    const slice = await this.posts.findFeed({
+      limit,
+      after,
+      viewerId: params.viewerId,
+    });
     return {
       items: slice.items.map((post) => presentPost(post, this.storage)),
       nextCursor: slice.next ? encodeCursor(slice.next) : null,
