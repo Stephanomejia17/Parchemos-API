@@ -5,7 +5,7 @@ import { LocationStatus } from '../../domain/enums/location-status.enum';
 import { LOCATION_REPOSITORY } from '../../domain/repositories/location.repository';
 import type { LocationRepository } from '../../domain/repositories/location.repository';
 import { UpdateLocationCommand } from '../dto/restaurant.commands';
-import { GeoapifyGeocodingService } from '../../infrastructure/geocoding/geoapify-geocoding.service';
+import { AddressGeocodingService } from '../../infrastructure/geocoding/address-geocoding.service';
 
 /** Editar una sede aprobada la vuelve a poner en revision (AN-01). */
 @Injectable()
@@ -13,7 +13,7 @@ export class UpdateLocationUseCase {
   constructor(
     @Inject(LOCATION_REPOSITORY)
     private readonly locations: LocationRepository,
-    private readonly geocoding: GeoapifyGeocodingService,
+    private readonly geocoding: AddressGeocodingService,
   ) {}
 
   async execute(
@@ -33,8 +33,14 @@ export class UpdateLocationUseCase {
     const addressChanged =
       command.address !== undefined &&
       command.address.trim() !== location.address;
+    // Las sedes creadas antes de la geocodificacion no tienen coordenadas y no
+    // aparecen en el mapa; al guardar su direccion (aunque no cambie) se ubican.
+    const missingCoordinates =
+      location.latitude === null || location.longitude === null;
+    const shouldGeocode =
+      command.address !== undefined && (addressChanged || missingCoordinates);
 
-    const geocoded = addressChanged
+    const geocoded = shouldGeocode
       ? await this.geocoding.geocode(command.address!.trim())
       : null;
 

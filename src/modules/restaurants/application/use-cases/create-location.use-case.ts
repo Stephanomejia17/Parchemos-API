@@ -6,7 +6,7 @@ import type { LocationRepository } from '../../domain/repositories/location.repo
 import { RESTAURANT_REPOSITORY } from '../../domain/repositories/restaurant.repository';
 import type { RestaurantRepository } from '../../domain/repositories/restaurant.repository';
 import { CreateLocationCommand } from '../dto/restaurant.commands';
-import { GeoapifyGeocodingService } from '../../infrastructure/geocoding/geoapify-geocoding.service';
+import { AddressGeocodingService } from '../../infrastructure/geocoding/address-geocoding.service';
 
 @Injectable()
 export class CreateLocationUseCase {
@@ -15,7 +15,7 @@ export class CreateLocationUseCase {
     private readonly restaurants: RestaurantRepository,
     @Inject(LOCATION_REPOSITORY)
     private readonly locations: LocationRepository,
-    private readonly geocoding: GeoapifyGeocodingService,
+    private readonly geocoding: AddressGeocodingService,
   ) {}
 
   async execute(

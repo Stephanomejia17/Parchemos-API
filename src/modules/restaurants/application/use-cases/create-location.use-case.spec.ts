@@ -1,7 +1,7 @@
 import { ValidationError } from '../../../../common/errors/validation-error';
 import type { LocationRepository } from '../../domain/repositories/location.repository';
 import type { RestaurantRepository } from '../../domain/repositories/restaurant.repository';
-import { GeoapifyGeocodingService } from '../../infrastructure/geocoding/geoapify-geocoding.service';
+import { AddressGeocodingService } from '../../infrastructure/geocoding/address-geocoding.service';
 import { CreateLocationUseCase } from './create-location.use-case';
 import { makeLocation } from './location.test-helpers';
 
@@ -21,7 +21,7 @@ describe('CreateLocationUseCase', () => {
     });
     const geocoding = {
       geocode,
-    } as unknown as GeoapifyGeocodingService;
+    } as unknown as AddressGeocodingService;
     const useCase = new CreateLocationUseCase(
       restaurants,
       locations,
@@ -65,7 +65,7 @@ describe('CreateLocationUseCase', () => {
       );
     const geocoding = {
       geocode,
-    } as unknown as GeoapifyGeocodingService;
+    } as unknown as AddressGeocodingService;
     const useCase = new CreateLocationUseCase(
       restaurants,
       locations,

@@ -23,7 +23,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "db:seed:admin": "node prisma/seed-admin.mjs"
+    "db:seed:admin": "node prisma/seed-admin.mjs",
+    "geo:regeocodificar": "nest build && node dist/src/scripts/regeocodificar-sedes.js"
   },
   "dependencies": {
     "@google/genai": "^2.31.0",
