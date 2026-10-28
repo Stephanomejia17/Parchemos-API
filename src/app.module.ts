@@ -26,6 +26,7 @@ import { EstadisticasModule } from './modules/estadisticas/estadisticas.module';
 import { ModeracionModule } from './modules/moderacion/moderacion.module';
 import { EncuestasModule } from './modules/encuestas/encuestas.module';
 import { InsightsModule } from './modules/insights/insights.module';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { InsightsModule } from './modules/insights/insights.module';
     ModeracionModule,
     EncuestasModule,
     InsightsModule,
+    NotificacionesModule,
   ],
   controllers: [AppController],
   providers: [

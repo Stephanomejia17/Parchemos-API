@@ -144,10 +144,26 @@ export class ModeracionService {
       const post = await tx.post.findFirst({ where: { id: postId, status: { not: PostStatus.eliminada } }, select: { id: true, authorId: true } });
       if (!post) throw new NotFoundException('La publicación ya fue eliminada o no existe.');
       const now = new Date();
+      // Quienes denunciaron y siguen esperando respuesta reciben el resultado.
+      const pendingReports = await tx.contentReport.findMany({ where: { postId, status: { in: activeReportStatuses } }, select: { reporterId: true } });
       await tx.post.update({ where: { id: postId }, data: { status: PostStatus.eliminada, removedById: adminId, removalReason: cleanReason, removedAt: now, updatedAt: now } });
       await tx.contentReport.updateMany({ where: { postId, status: { in: activeReportStatuses } }, data: { status: ReportStatus.resuelto, resolvedById: adminId, resolvedAt: now, resolutionNote: cleanReason } });
       await tx.auditLog.create({ data: { actorId: adminId, action: 'post_removed', entityType: 'post', entityId: postId, reason: cleanReason, metadata: { postAuthorId: post.authorId } } });
       await tx.notification.create({ data: { userId: post.authorId, type: 'moderation_post_removed', title: 'Publicación eliminada', body: `Tu publicación fue eliminada por el siguiente motivo: ${cleanReason}`, entityType: 'post', entityId: postId, data: { reason: cleanReason } } });
+      const reporterIds = [...new Set(pendingReports.map((report) => report.reporterId))].filter((id) => id !== post.authorId);
+      if (reporterIds.length) {
+        await tx.notification.createMany({
+          data: reporterIds.map((userId) => ({
+            userId,
+            type: 'moderation_report_resolved',
+            title: 'Denuncia atendida',
+            body: `Revisamos la publicación que denunciaste y fue eliminada. Motivo: ${cleanReason}`,
+            entityType: 'post',
+            entityId: postId,
+            data: { reason: cleanReason, result: 'removed' },
+          })),
+        });
+      }
       return { id: postId, status: PostStatus.eliminada };
     });
   }
@@ -156,11 +172,21 @@ export class ModeracionService {
     const cleanResult = result.trim();
     if (!cleanResult) throw new ConflictException('El resultado de la revisión es obligatorio.');
     return this.prisma.$transaction(async (tx) => {
-      const report = await tx.contentReport.findFirst({ where: { id: reportId, status: { in: activeReportStatuses } }, select: { id: true, postId: true } });
+      const report = await tx.contentReport.findFirst({ where: { id: reportId, status: { in: activeReportStatuses } }, select: { id: true, postId: true, reporterId: true, post: { select: { authorId: true, status: true } } } });
       if (!report) throw new ConflictException('La denuncia no existe o ya fue revisada.');
       const now = new Date();
       const updated = await tx.contentReport.update({ where: { id: reportId }, data: { status: ReportStatus.descartado, resolvedById: adminId, resolvedAt: now, resolutionNote: cleanResult }, select: { id: true, postId: true, status: true, createdAt: true, resolvedAt: true, resolutionNote: true } });
       await tx.auditLog.create({ data: { actorId: adminId, action: 'report_reviewed', entityType: 'content_report', entityId: report.id, reason: cleanResult, metadata: { postId: report.postId } } });
+      await tx.notification.create({ data: { userId: report.reporterId, type: 'moderation_report_dismissed', title: 'Denuncia revisada', body: `Revisamos tu denuncia y la publicación no infringe las normas, así que seguirá publicada. Resultado: ${cleanResult}`, entityType: 'post', entityId: report.postId, data: { result: cleanResult } } });
+      // Al dueño se le avisa una sola vez, cuando ya no quedan denuncias
+      // pendientes y su publicación se mantiene (no una vez por denuncia).
+      const author = report.post?.authorId;
+      if (report.postId && author && author !== report.reporterId && report.post?.status === PostStatus.publicada) {
+        const stillPending = await tx.contentReport.count({ where: { postId: report.postId, status: { in: activeReportStatuses } } });
+        if (stillPending === 0) {
+          await tx.notification.create({ data: { userId: author, type: 'moderation_post_kept', title: 'Publicación revisada', body: `Revisamos las denuncias sobre tu publicación y se mantiene publicada. Resultado: ${cleanResult}`, entityType: 'post', entityId: report.postId, data: { result: cleanResult } } });
+        }
+      }
       return updated;
     });
   }
