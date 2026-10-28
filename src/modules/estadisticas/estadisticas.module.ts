@@ -13,5 +13,6 @@ import { PrismaEstadisticasRepository } from './infraestructure/persistence/pris
       useClass: PrismaEstadisticasRepository,
     },
   ],
+  exports: [EstadisticasService],
 })
 export class EstadisticasModule {}

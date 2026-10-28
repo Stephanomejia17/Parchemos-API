@@ -40,6 +40,7 @@ export interface ContenidoDestacado {
   autor: string;
   sede: string | null;
   likes: number;
+  visualizaciones: number;
   imagenes: number;
   videos: number;
 }

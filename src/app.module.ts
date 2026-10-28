@@ -25,6 +25,7 @@ import { MesasModule } from './modules/mesas/mesas.module';
 import { EstadisticasModule } from './modules/estadisticas/estadisticas.module';
 import { ModeracionModule } from './modules/moderacion/moderacion.module';
 import { EncuestasModule } from './modules/encuestas/encuestas.module';
+import { InsightsModule } from './modules/insights/insights.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { EncuestasModule } from './modules/encuestas/encuestas.module';
     FavoritosModule,
     ModeracionModule,
     EncuestasModule,
+    InsightsModule,
   ],
   controllers: [AppController],
   providers: [

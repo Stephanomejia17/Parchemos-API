@@ -279,6 +279,23 @@ enum ReportStatus {
   @@map("report_status")
 }
 
+/// Dashboard que analiza un insight de IA.
+enum InsightScope {
+  restaurante
+  administrador
+
+  @@map("insight_scope")
+}
+
+/// Un insight queda `generando` mientras se espera a Claude; si la llamada
+/// falla la fila se borra para no consumir el cupo diario.
+enum InsightStatus {
+  generando
+  listo
+
+  @@map("insight_status")
+}
+
 // ============================================================================
 // Identidad y acceso (GU-01, GU-02, GU-03)
 // ============================================================================
@@ -350,6 +367,7 @@ model User {
   productReviews  ProductReview[]
   reportsFiled    ContentReport[]  @relation("ReportReporter")
   reportsResolved ContentReport[]  @relation("ReportResolver")
+  aiInsights      AiInsight[]
 
   reservations             Reservation[]              @relation("ReservationDiner")
   reservationsCancelled    Reservation[]              @relation("ReservationCanceller")
@@ -1535,4 +1553,26 @@ model ContentReport {
   @@unique([reporterId, productReviewId], map: "content_reports_preview_key", where: raw("(product_review_id IS NOT NULL)"))
   @@index([status, createdAt], map: "content_reports_queue_idx", where: raw("(status = ANY (ARRAY['pendiente'::report_status, 'en_revision'::report_status]))"))
   @@map("content_reports")
+}
+
+/// Insights de IA de los dashboards. La clave unica (usuario, ambito, dia en
+/// hora de Colombia) es la que impone el limite de una solicitud por dia.
+model AiInsight {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope        InsightScope
+  insightDate  DateTime      @map("insight_date") @db.Date
+  status       InsightStatus @default(generando)
+  rangeFrom    DateTime      @map("range_from") @db.Date
+  rangeTo      DateTime      @map("range_to") @db.Date
+  /// Nulo = todos los restaurantes del dueno (o la plataforma completa).
+  restaurantId String?       @map("restaurant_id") @db.Uuid
+  content      Json?
+  model        String?
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, scope, insightDate], map: "ai_insights_user_scope_day_key")
+  @@map("ai_insights")
 }

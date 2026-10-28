@@ -62,6 +62,10 @@ export interface AppEnv {
   /** Bucket de fotos y videos del feed (DO-04). Opcional: sin definir usa el general. */
   SUPABASE_POSTS_BUCKET?: string;
   GEOAPIFY_API_KEY?: string;
+  /** Clave de la API de Gemini para los insights. Sin ella, los insights responden 503. */
+  GEMINI_API_KEY?: string;
+  /** Modelos de Gemini para los insights, separados por comas, en orden de preferencia. */
+  INSIGHTS_MODEL?: string;
 }
 
 export function validateEnv(
@@ -89,6 +93,10 @@ export function validateEnv(
       (config.SUPABASE_POSTS_BUCKET as string | undefined)?.trim() || undefined,
     GEOAPIFY_API_KEY:
     (config.GEOAPIFY_API_KEY as string | undefined)?.trim() || undefined,
+    GEMINI_API_KEY:
+      (config.GEMINI_API_KEY as string | undefined)?.trim() || undefined,
+    INSIGHTS_MODEL:
+      (config.INSIGHTS_MODEL as string | undefined)?.trim() || undefined,
   };
 
   return { ...config, ...validated };
